@@ -1,7 +1,7 @@
 /* Service worker mínimo de la PWA de prueba.
    Red primero para los archivos propios (siempre la versión publicada más reciente);
    la copia en caché solo se usa sin conexión. El mapa, las teselas y las fuentes externas no se guardan. */
-var CACHE = 'cerca-v1';
+var CACHE = 'cerca-v2';
 var SHELL = ['./', 'index.html', 'css/styles.css', 'js/config.js', 'js/data.js', 'js/map.js', 'js/search.js', 'js/app.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', function (e) {
@@ -15,7 +15,8 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) { return; }
-  e.respondWith(fetch(req).then(function (res) {
+  /* cache: 'no-cache' revalida con el servidor (304 si no cambió) para no servir versiones viejas */
+  e.respondWith(fetch(req, { cache: 'no-cache' }).then(function (res) {
     if (res.ok) { var copy = res.clone(); caches.open(CACHE).then(function (c) { c.put(req, copy); }); }
     return res;
   }).catch(function () {
