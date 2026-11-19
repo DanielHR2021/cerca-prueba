@@ -77,7 +77,9 @@
     }
     arm();
     document.addEventListener('visibilitychange', function () { if (!done && !document.hidden) { clearTimeout(timer); arm(); } });
-    map.on('load', function () { if (done) { return; } done = true; clearTimeout(timer); onLoaded(); });
+    /* Éxito = estilo descargado y procesado ('style.load'); no espera a dibujar teselas ('load'),
+       que se retrasa si el mapa está oculto o el navegador pausa el dibujado. */
+    map.once('style.load', function () { if (done) { return; } done = true; clearTimeout(timer); onLoaded(); });
     map.on('error', function (e) { if (!done && !map.isStyleLoaded()) { fail((e && e.error && e.error.message) || 'Error cargando el estilo del mapa'); } });
     o.businesses.forEach(function (b) {
       byId[b.id] = b;
