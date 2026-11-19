@@ -66,7 +66,17 @@
     if (map.touchZoomRotate && map.touchZoomRotate.disableRotation) { map.touchZoomRotate.disableRotation(); }
     map.addControl(new ML.NavigationControl({ showCompass: false }), 'top-right');
     function fail(msg) { if (done) { return; } done = true; clearTimeout(timer); onFail(new Error(msg)); }
-    var timer = setTimeout(function () { fail('Tiempo agotado cargando el estilo del mapa'); }, c.mapTimeoutMs);
+    /* El plazo solo cuenta con el mapa visible y la pestaña en primer plano: en segundo plano
+       el navegador pausa el dibujado y MapLibre no puede terminar de cargar. */
+    var timer;
+    function arm() {
+      timer = setTimeout(function () {
+        if (document.hidden || !o.container.offsetWidth || !o.container.offsetHeight) { arm(); return; }
+        fail('Tiempo agotado cargando el estilo del mapa');
+      }, c.mapTimeoutMs);
+    }
+    arm();
+    document.addEventListener('visibilitychange', function () { if (!done && !document.hidden) { clearTimeout(timer); arm(); } });
     map.on('load', function () { if (done) { return; } done = true; clearTimeout(timer); onLoaded(); });
     map.on('error', function (e) { if (!done && !map.isStyleLoaded()) { fail((e && e.error && e.error.message) || 'Error cargando el estilo del mapa'); } });
     o.businesses.forEach(function (b) {
@@ -80,7 +90,7 @@
       update: function (s) { apply(pins, s); },
       select: function (id) { var b = byId[id]; if (b) { map.easeTo({ center: [b.lng, b.lat], duration: reduce ? 0 : 500 }); } },
       home: function () { map.easeTo({ center: c.mapCenter, zoom: c.mapZoom, duration: reduce ? 0 : 600 }); },
-      resize: function () { map.resize(); },
+      resize: function () { map.resize(); if (!done) { clearTimeout(timer); arm(); } /* plazo completo al mostrarse */ },
       setTheme: function (t) { map.setStyle(styleFor(c, t)); },
       destroy: function () { done = true; clearTimeout(timer); try { map.remove(); } catch (e) { /* ya liberado */ } }
     };
