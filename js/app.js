@@ -11,7 +11,6 @@
   var $$ = function (s, el) { return Array.prototype.slice.call((el || document).querySelectorAll(s)); };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   var CATS = ['Todos', 'Comida', 'Café', 'Tiendas', 'Servicios'];
-  var COLORS = { Comida: '#F2A33A', 'Café': '#F0A6B8', Tiendas: '#8CC6E3', Servicios: '#A8D68A' };
   var ICON_SAVE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/></svg>';
   var mascot = function (m) { if (window.Cerca.assistant) { Cerca.assistant.mood(m); } };
 
@@ -64,9 +63,9 @@
       return (state.cat === 'Todos' || b.category === state.cat) && (!state.openOnly || isOpen(b));
     });
     var q = state.q.trim();
-    if (!q) { state.approx = false; return items; }
+    if (!q) { state.approx = false; state.hits = {}; return items; }
     var r = Cerca.search.rank(items, q);
-    state.approx = r.approximate;
+    state.approx = r.approximate; state.hits = r.hits;
     return r.items;
   }
 
@@ -80,8 +79,11 @@
     var on = mode === 'pick' && state.sel === b.id;
     return '<li class="card' + (on ? ' is-sel' : '') + '" data-id="' + b.id + '">' +
       '<button type="button" class="card-main" data-' + mode + '="' + b.id + '"' + (mode === 'pick' ? ' aria-pressed="' + on + '"' : '') + '>' +
+      '<span class="card-ico pfv" style="' + Cerca.profiles.vars(b) + '">' + Cerca.profiles.icon(b.icon, 24) + '</span><span class="card-txt">' +
       '<span class="card-name">' + esc(b.name) + '</span><span class="card-blurb">' + esc(b.blurb) + '</span>' +
-      '<span class="card-meta">' + statusHtml(b) + '</span></button>' + saveBtn(b) +
+      (mode === 'pick' && state.q.trim() && state.hits && state.hits[b.id] && Cerca.search.words(state.hits[b.id]).join(' ') !== Cerca.search.words(state.q).join(' ')
+        ? '<span class="card-hit"><span class="sr-only">Coincide con </span>' + esc(state.hits[b.id]) + '</span>' : '') +
+      '<span class="card-meta">' + statusHtml(b) + '</span></span></button>' + saveBtn(b) +
       '<a class="card-link" href="#/negocio/' + b.id + '" aria-label="Ver perfil de ' + esc(b.name) + '">Ver perfil</a></li>';
   }
   function renderChips() {
@@ -145,33 +147,42 @@
   }
 
   /* ---------- Vistas ---------- */
-  function renderProfile(b) {
-    var color = COLORS[b.category];
-    $('#profile').innerHTML =
-      '<a class="back" href="#/"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Volver a explorar</a>' +
-      '<header class="cover" style="--cat:' + color + '"><h1 id="profile-title" tabindex="-1">' + esc(b.name) + '</h1><p>' + esc(b.description) + '</p><div class="card-meta">' + statusHtml(b) + '</div></header>' +
-      '<div class="profile-grid"><section class="panel-card"><h2>Cuándo y dónde</h2><dl>' +
-      '<dt>Categoría</dt><dd>' + esc(b.category) + '</dd><dt>Horario</dt><dd>' + hoursText(b) + '</dd>' +
-      '<dt>Zona</dt><dd>' + esc(C.municipioNombre) + ', ' + esc(C.municipios[b.municipio].departamento) + '</dd><dt>Dirección</dt><dd class="placeholder">[Dirección de ejemplo, no es real]</dd></dl>' +
-      '<div class="row-actions"><button type="button" class="btn btn--accent" id="see-on-map">Ver en el mapa</button>' +
-      '<button type="button" class="btn btn--ghost" data-save="' + b.id + '" aria-pressed="' + isSaved(b.id) + '">' + ICON_SAVE + '<span class="save-lbl">' + (isSaved(b.id) ? 'Guardado' : 'Guardar') + '</span></button></div></section>' +
-      '<section class="panel-card"><h2>Contacto</h2><p class="demo-note"><strong>Datos de prueba.</strong> Este negocio y su contacto son ficticios. En la plataforma real aparecerán aquí los datos del comerciante.</p>' +
-      '<dl><dt>Teléfono</dt><dd class="placeholder">' + esc(b.phone) + '</dd><dt>WhatsApp</dt><dd class="placeholder">[WhatsApp ficticio]</dd></dl></section></div>';
-    $('#see-on-map').addEventListener('click', function () { showMap(b.id); });
+  function profileHelpers(preview) {
+    return { statusHtml: statusHtml, hoursText: hoursText, isSaved: isSaved, place: C.municipioNombre, dept: C.municipios[C.municipio].departamento, preview: !!preview };
   }
-  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '' };
+  function renderProfile(b) { $('#profile').innerHTML = Cerca.profiles.render(b, profileHelpers(false)); }
+  var toastTimer = null;
+  function toast(text) {
+    var t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = text; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3200);
+  }
+  function profileAction(btn) {
+    var note = btn.closest('.pf').querySelector('.pf-note');
+    if (btn.getAttribute('aria-disabled') === 'true') { note.textContent = btn.dataset.why; note.hidden = false; return; }
+    var b = state.profile; if (!b) { return; }
+    if (btn.dataset.pfAct === 'map') { showMap(b.id); }
+    if (btn.dataset.pfAct === 'share') {
+      var url = location.href.split('#')[0] + '#/negocio/' + b.id, data = { title: b.name, text: b.name + ' en ' + C.municipioNombre + ' (negocio de prueba)', url: url };
+      if (navigator.share) { navigator.share(data).catch(function () { /* el usuario canceló */ }); }
+      else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast('Enlace copiado.'); }, function () { toast('Copia este enlace: ' + url); }); }
+      else { toast('Copia este enlace: ' + url); }
+    }
+  }
+  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', draft: 'Vista previa de tu negocio' };
   function route() {
     var h = location.hash || '#/';
     var m = /^#\/negocio\/(\d+)$/.exec(h), b = m && byId(+m[1]);
     var prev = state.view;
-    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/ajustes' ? 'settings' : 'home';
+    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : 'home';
     state.profile = b || null;
     Object.keys(VIEWS).forEach(function (v) { $('#view-' + v).hidden = v !== state.view; });
-    var navKey = state.view === 'profile' ? 'home' : state.view;
+    var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view;
     $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === navKey) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); } });
     document.title = (b ? b.name : VIEWS[state.view]) + ' · ' + C.appName + ' (provisional)';
     if (state.view === 'profile') { renderProfile(b); }
     if (state.view === 'saved') { renderSaved(); }
+    if (state.view === 'owner' && Cerca.editor) { Cerca.editor.refresh(); }
+    if (state.view === 'draft' && Cerca.editor) { $('#draft-profile').innerHTML = Cerca.profiles.render(Cerca.editor.draft(), profileHelpers(true)); }
     if (state.view === 'home') {
       render(); map.resize();
       if (state.sel) { map.select(state.sel); }
@@ -248,26 +259,12 @@
     installEvt.prompt(); installEvt.userChoice.then(function () { installEvt = null; $('#install-btn').hidden = true; });
   });
 
-  /* Vista previa local de la tarjeta de un negocio (no se guarda ni se envía). */
-  (function () {
-    var f = $('#owner-form'), out = $('#owner-preview');
-    var hours = ''; for (var h = 0; h < 24; h++) { hours += '<option value="' + h + '">' + fmtHour(h) + '</option>'; }
-    $('#of-from').innerHTML = hours; $('#of-to').innerHTML = hours; $('#of-from').value = '8'; $('#of-to').value = '18';
-    $('#of-cat').innerHTML = CATS.slice(1).map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
-    function paint() {
-      var b = { name: $('#of-name').value.trim() || 'Nombre de tu negocio', blurb: $('#of-blurb').value.trim() || 'Una frase corta sobre lo que ofreces.',
-        hours: { from: +$('#of-from').value, to: +$('#of-to').value }, moved: false, fresh: true };
-      out.innerHTML = '<span class="card-name">' + esc(b.name) + '</span><span class="card-blurb">' + esc(b.blurb) + '</span>' +
-        '<span class="card-meta">' + (b.hours.to > b.hours.from
-          ? statusHtml(b) + '<span class="muted">' + esc($('#of-cat').value) + ', ' + hoursText(b).toLowerCase() + '</span>'
-          : '<span class="status is-closed">La hora de cierre debe ser después de la apertura.</span>') + '</span>';
-      out.style.setProperty('--cat', COLORS[$('#of-cat').value]);
-    }
-    f.addEventListener('input', paint); f.addEventListener('submit', function (e) { e.preventDefault(); }); paint();
-  })();
+  /* Acciones rápidas de los perfiles (también en la vista previa, donde solo explican que no actúan). */
+  document.addEventListener('click', function (e) { var b = e.target.closest('.pf-act'); if (b && !b.hasAttribute('data-save')) { profileAction(b); } });
 
-  /* API para el asistente: solo funciones que existen en la interfaz. */
+  /* API para el asistente y el editor: solo funciones que existen en la interfaz. */
   Cerca.app = {
+    profileHelpers: profileHelpers,
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
     view: function () { return state.view; }, profile: function () { return state.profile; },
     search: function (q) { state.q = q; state.cat = 'Todos'; state.openOnly = false; state.pane = 'list'; el.input.value = q; renderChips(); go('#/'); return afterFilterChange(); },

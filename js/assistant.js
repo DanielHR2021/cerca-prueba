@@ -109,12 +109,7 @@
     find(raw);
   }
   function find(text) {
-    var r = Cerca.search.rank(A.data, text), l = r.items;
-    if (!l.length) { // respaldo: palabras clave contenidas en lo escrito («fotocopias» contiene «copias»)
-      var n = norm(text).replace(/\s/g, '');
-      l = A.data.filter(function (b) { return (b.keywords || []).some(function (k) { k = norm(k); return k.length >= 4 && n.indexOf(k) !== -1; }); });
-      r = { approximate: true };
-    }
+    var r = Cerca.search.rank(A.data, text), l = r.items; // la misma búsqueda que el buscador principal
     if (!l.length) {
       mood('empty', 2600);
       bot('No encontré «' + esc(text) + '» entre los negocios de prueba. Prueba con otra palabra o mira las categorías.', { acts: [act('Ver categorías', T.cats), act('Preguntas frecuentes', T.faq)] });

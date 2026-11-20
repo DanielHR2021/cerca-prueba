@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/mascot.css">
+<link rel="stylesheet" href="css/profiles.css">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16302B">
 <link rel="manifest" href="manifest.webmanifest">
@@ -74,7 +75,12 @@
   </main>
 </div>
 
-<div id="view-profile" hidden><main class="profile" id="profile"></main></div>
+<div id="view-profile" hidden><main id="profile"></main></div>
+
+<div id="view-draft" class="draft-wrap" hidden>
+  <div class="draft-banner" role="note"><span>Vista previa de tu borrador. Solo se ve en este dispositivo y no está publicada.</span><a class="btn btn--ghost" href="#/mi-negocio">Volver a editar</a></div>
+  <main id="draft-profile"></main>
+</div>
 
 <div id="view-saved" hidden>
   <main class="page">
@@ -90,12 +96,62 @@
 </div>
 
 <div id="view-owner" hidden>
-  <main class="page">
+  <main class="page page--editor">
     <h1 tabindex="-1">Tu negocio en Cerca</h1>
-    <p class="notice">El registro de negocios todavía no está abierto. En esta versión de prueba todos los negocios son ficticios.</p>
+    <p class="notice">El registro de negocios todavía no está abierto. Lo que diseñes aquí es un borrador que se guarda solo en este dispositivo: no se publica y nadie más puede verlo.</p>
+    <div class="viewtoggle ed-toggle" role="group" aria-label="Editor del perfil">
+      <button type="button" id="ed-tab-edit" aria-pressed="true">Editar</button>
+      <button type="button" id="ed-tab-prev" aria-pressed="false">Vista previa</button>
+    </div>
+    <div class="editor" id="editor" data-pane="edit">
+      <form id="ed-form" class="ed-form" novalidate>
+        <fieldset>
+          <legend>Lo básico</legend>
+          <label>Nombre del negocio<input id="ed-name" maxlength="40" autocomplete="off" placeholder="Ej.: Panadería La Espiga"></label>
+          <label>Tipo de negocio<select id="ed-kind"></select></label>
+          <label>Frase corta<input id="ed-blurb" maxlength="60" autocomplete="off" placeholder="Qué ofreces, en pocas palabras"></label>
+          <div class="ed-row"><label>Abre<select id="ed-from"></select></label><label>Cierra<select id="ed-to"></select></label></div>
+          <p class="ed-hint" id="ed-hours-err" role="alert" hidden>La hora de cierre debe ser después de la apertura.</p>
+        </fieldset>
+        <fieldset>
+          <legend>Identidad</legend>
+          <p class="ed-hint" id="ed-family"></p>
+          <div class="ed-label" id="ed-pal-l">Color</div>
+          <ul class="ed-swatches" id="ed-palettes" role="radiogroup" aria-labelledby="ed-pal-l"></ul>
+          <div class="ed-label" id="ed-ico-l">Icono</div>
+          <ul class="ed-icons" id="ed-icons" role="radiogroup" aria-labelledby="ed-ico-l"></ul>
+          <label>Logotipo<input type="file" id="ed-logo" accept="image/*"></label>
+          <div class="ed-file" id="ed-logo-prev"></div>
+          <label>Foto de portada<input type="file" id="ed-cover" accept="image/*"></label>
+          <p class="ed-hint">La portada y la galería se ven solo durante esta visita. El logotipo se guarda reducido en este dispositivo. Ninguna foto sale de tu celular.</p>
+          <div class="ed-file" id="ed-cover-prev"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Tu historia</legend>
+          <label>Presentación breve<textarea id="ed-story" maxlength="220" placeholder="Cómo empezó tu negocio o qué lo hace especial"></textarea></label>
+          <label>Novedad de hoy<input id="ed-news" maxlength="80" autocomplete="off" placeholder="Ej.: Salió el pan de bono"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Productos o servicios destacados</legend>
+          <ul class="ed-items" id="ed-items"></ul>
+          <button type="button" class="btn btn--ghost" id="ed-add-item">Añadir destacado</button>
+        </fieldset>
+        <fieldset>
+          <legend>Galería</legend>
+          <label>Añadir fotos (hasta 4)<input type="file" id="ed-gallery" accept="image/*" multiple></label>
+          <ul class="ed-thumbs" id="ed-gallery-prev"></ul>
+        </fieldset>
+        <div class="ed-bar">
+          <p class="ed-status" id="ed-status" role="status"></p>
+          <a class="btn" href="#/mi-negocio/vista">Ver perfil completo</a>
+          <button type="button" class="btn btn--ghost" id="ed-clear">Borrar borrador</button>
+        </div>
+      </form>
+      <section class="ed-preview" id="ed-preview" aria-label="Vista previa del perfil"></section>
+    </div>
     <div class="page-grid">
       <section class="panel-card">
-        <h2>Qué vas a necesitar</h2>
+        <h2>Qué vas a necesitar para registrarte</h2>
         <ul class="checklist">
           <li>Nombre y categoría del negocio</li>
           <li>Ubicación: dirección o un punto en el mapa</li>
@@ -105,17 +161,6 @@
           <li>Una frase corta sobre lo que ofreces</li>
         </ul>
         <button type="button" class="btn btn--ghost" data-assist-topic="owner">Preguntar al ayudante</button>
-      </section>
-      <section class="panel-card">
-        <h2>Así se vería tu tarjeta</h2>
-        <p class="muted small">Vista previa en este dispositivo. No se guarda ni se envía.</p>
-        <form id="owner-form" class="owner-form">
-          <label>Nombre<input id="of-name" maxlength="40" autocomplete="off" placeholder="Nombre de tu negocio"></label>
-          <label>Categoría<select id="of-cat"></select></label>
-          <label>Frase corta<input id="of-blurb" maxlength="60" autocomplete="off" placeholder="Qué ofreces"></label>
-          <div class="owner-hours"><label>Abre<select id="of-from"></select></label><label>Cierra<select id="of-to"></select></label></div>
-        </form>
-        <div class="preview-card" id="owner-preview" aria-live="polite"></div>
       </section>
     </div>
   </main>
@@ -169,6 +214,8 @@
 <script src="js/map.js"></script>
 <script src="js/search.js"></script>
 <script src="js/mascot.js"></script>
+<script src="js/profiles.js"></script>
+<script src="js/editor.js"></script>
 <script src="js/app.js"></script>
 <script src="js/assistant.js"></script>
 <script>/* PWA: registra el service worker si el navegador lo admite (solo https o localhost) */if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
