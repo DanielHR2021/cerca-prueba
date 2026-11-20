@@ -100,13 +100,30 @@
     var b = state.sel && byId(state.sel);
     var visible = b && items.indexOf(b) !== -1;
     el.selcard.hidden = !visible;
+    el.selcard.classList.toggle('has-route', !!(visible && state.route && state.route.id === b.id));
     if (!visible) { return; }
     el.selcard.innerHTML = '<h3>' + esc(b.name) + '</h3><p class="muted">' + esc(b.category) + ', ' + hoursText(b).toLowerCase() + '</p><p>' + esc(b.blurb) + '</p>' +
-      '<div class="card-meta">' + statusHtml(b) + '</div><div class="selcard-actions"><a class="btn btn--accent" href="#/negocio/' + b.id + '">Ver perfil</a>' + saveBtn(b) + '</div>';
+      '<div class="card-meta">' + statusHtml(b) + '</div><div class="selcard-actions"><a class="btn btn--accent" href="#/negocio/' + b.id + '">Ver perfil</a>' + saveBtn(b) + '</div>' + routeHtml(b);
+  }
+  /* Módulo 01, Fase 3: ruta a pie. Distancia y duración vienen del servicio de rutas; nunca se calculan aquí. */
+  function fmtDuration(s) { var m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; }
+  function routeHtml(b) {
+    var r = state.route;
+    if (r && r.id === b.id) {
+      return '<div class="route-info"><p class="route-sum"><strong>≈ ' + fmtDuration(r.durationS) + ' a pie</strong>, ' + Cerca.geo.fmtDistance(r.distanceM) + '</p>' +
+        '<p class="route-note">' + esc(r.provider.attribution) + '. <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir el mapa</a></p>' +
+        (b.demo ? '<p class="route-note">El destino es el punto de prueba de este negocio ficticio.</p>' : '') +
+        '<button type="button" class="geo-act" data-route-clear>Quitar ruta</button></div>';
+    }
+    var busy = state.routing === b.id;
+    return '<div class="route-ask"><button type="button" class="btn btn--ghost route-btn" data-route="' + b.id + '"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
+      (busy ? 'Calculando ruta…' : 'Ruta a pie') + '</button>' +
+      '<p class="route-note">Para calcularla se envían tu ubicación y el destino al servicio público de rutas de OpenStreetMap (FOSSGIS, Alemania).</p></div>';
   }
   function render() {
     var items = filtered();
     if (state.sel && items.map(function (b) { return b.id; }).indexOf(state.sel) === -1) { state.sel = null; }
+    if (state.route && state.route.id !== state.sel) { state.route = null; map.clearRoute(); }
     renderList(items); renderSelCard(items);
     var vis = new Set(items.map(function (b) { return b.id; }));
     var closed = new Set(DATA.filter(function (b) { return !isOpen(b); }).map(function (b) { return b.id; }));
@@ -136,6 +153,7 @@
     return items;
   }
   function pick(id, fromMap) {
+    if (state.route && state.route.id !== id) { clearRoute(); } // la ruta corresponde a otro negocio
     state.sel = id; render();
     if (!fromMap) { map.select(id); }
   }
@@ -289,7 +307,15 @@
     stopBtn.addEventListener('click', function () { stopTracking('Seguimiento detenido. Tu ubicación queda en el mapa hasta que la quites.'); });
     recenterBtn.addEventListener('click', recenter);
 
-    function clearUser() { stopTracking(); here = null; lastFix = null; map.clearUser(); btn.classList.remove('is-on'); setBusy(false); show('Quitamos tu ubicación del mapa.', { autoHide: 3000 }); }
+    function clearUser() { stopTracking(); clearRoute(); here = null; lastFix = null; map.clearUser(); btn.classList.remove('is-on'); setBusy(false); show('Quitamos tu ubicación del mapa.', { autoHide: 3000 }); }
+    /* Fase 3: la ruta necesita tu ubicación; si aún no la tenemos se pide ahora (el usuario pulsó «Ruta a pie»). */
+    function ensureLocation() {
+      if (here) { return Promise.resolve(here); }
+      setBusy(true); show('Buscando tu ubicación para calcular la ruta…');
+      return Cerca.geo.locate().then(function (u) {
+        here = u; btn.classList.add('is-on'); setBusy(false); map.setUser(u); hide(); return u;
+      }, function (err) { setBusy(false); show(err.message, { error: true }); throw err; });
+    }
     function locate() {
       if (busy) { return; }
       setBusy(true); show('Buscando tu ubicación…');
@@ -313,8 +339,29 @@
     }
     btn.addEventListener('click', locate);
     $('#geo-msg-close').addEventListener('click', hide);
-    return { stopTracking: stopTracking, tracking: function () { return tracking; } };
+    return { stopTracking: stopTracking, tracking: function () { return tracking; }, ensureLocation: ensureLocation, show: show, hide: hide };
   })();
+
+  /* ---------- Módulo 01, Fase 3: ruta a pie hacia el negocio seleccionado ---------- */
+  function clearRoute() { if (state.route) { state.route = null; map.clearRoute(); renderSelCard(filtered()); } }
+  function requestRoute(id) {
+    var b = byId(id); if (!b || state.routing) { return; }
+    state.routing = id; renderSelCard(filtered());
+    geoCtl.ensureLocation().then(function (u) {
+      return Cerca.routing.route(u, { lat: b.lat, lng: b.lng }).then(function (r) {
+        if (state.sel !== id) { return; } // el usuario eligió otro negocio mientras esperaba
+        if (!map.isReal()) { geoCtl.show('La ruta solo se puede dibujar sobre el mapa real, que no cargó.', { error: true }); return; }
+        state.route = { id: id, distanceM: r.distanceM, durationS: r.durationS, provider: r.provider };
+        state.routing = null; renderSelCard(filtered()); // tarjeta compacta antes de encuadrar
+        map.setRoute(r.coords, { bottom: el.selcard.offsetHeight + 24 });
+        geoCtl.hide();
+      }, function (err) { geoCtl.show(err.message, { error: true, acts: err.code === 'timeout' || err.code === 'rate' || err.code === 'unavailable' || err.code === 'offline' ? [['Intentar de nuevo', function () { geoCtl.hide(); requestRoute(id); }]] : [] }); });
+    }, function () { /* el mensaje de ubicación ya se mostró */ }).then(function () { state.routing = null; renderSelCard(filtered()); });
+  }
+  document.addEventListener('click', function (e) {
+    var r = e.target.closest('[data-route]'); if (r) { requestRoute(+r.dataset.route); return; }
+    if (e.target.closest('[data-route-clear]')) { clearRoute(); }
+  });
 
   /* Tema claro (dirección A) y oscuro (dirección C); la preferencia se recuerda. */
   function theme() { return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
@@ -367,7 +414,7 @@
   /* API para el asistente y el editor: solo funciones que existen en la interfaz. */
   Cerca.app = {
     profileHelpers: profileHelpers,
-    mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy(), user: map.user(), center: map.center(), tracking: geoCtl.tracking() }; }, // solo para pruebas
+    mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy(), user: map.user(), center: map.center(), tracking: geoCtl.tracking(), routeLayer: map.hasRoute(), route: state.route }; }, // solo para pruebas
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
     view: function () { return state.view; }, profile: function () { return state.profile; },
     search: function (q) { state.q = q; state.cat = 'Todos'; state.openOnly = false; state.pane = 'list'; el.input.value = q; renderChips(); go('#/'); return afterFilterChange(); },

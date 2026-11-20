@@ -75,6 +75,7 @@
       },
       clearUser: function () { if (dot) { dot.remove(); dot = null; } },
       centerOnUser: function () {}, followUser: function () {}, center: function () { return null; },
+      setRoute: function () { return false; }, clearRoute: function () {}, hasRoute: function () { return false; }, // el esquema no dibuja rutas
       destroy: function () { o.container.innerHTML = ''; }
     };
   }
@@ -134,6 +135,24 @@
       if (map.getSource(ACC)) { map.removeSource(ACC); }
     }
     map.on('style.load', drawAccuracy); // setStyle (cambio de tema) borra las capas propias: se vuelven a añadir
+
+    /* ---- Fase 3: ruta (geometría del proveedor, nunca una línea recta inventada) ---- */
+    var routeCoords = null, RT = 'nubi-route';
+    function drawRoute() {
+      if (!routeCoords || !styleReady) { return; }
+      var data = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: routeCoords } };
+      var src = map.getSource(RT);
+      if (src) { src.setData(data); return; }
+      var dark = document.documentElement.dataset.theme === 'dark';
+      map.addSource(RT, { type: 'geojson', data: data });
+      map.addLayer({ id: RT + '-casing', type: 'line', source: RT, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#0F1A22' : '#FFFFFF', 'line-width': 9, 'line-opacity': 0.9 } });
+      map.addLayer({ id: RT + '-line', type: 'line', source: RT, layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': accColor(), 'line-width': 5 } });
+    }
+    function removeRoute() {
+      [RT + '-line', RT + '-casing'].forEach(function (id) { if (map.getLayer(id)) { map.removeLayer(id); } });
+      if (map.getSource(RT)) { map.removeSource(RT); }
+    }
+    map.on('style.load', drawRoute);
     /* Movimiento manual (arrastrar, pellizcar, rueda o botones +/−): MapLibre incluye originalEvent solo en esos casos. */
     ['dragstart', 'zoomstart'].forEach(function (ev) { map.on(ev, function (e) { if (e && e.originalEvent && o.onManualMove) { o.onManualMove(); } }); });
     var anim = null;
@@ -155,6 +174,17 @@
         return true;
       },
       followUser: function () { if (user) { map.easeTo({ center: [user.lng, user.lat], duration: reduce ? 0 : 600 }); } },
+      /* pad.bottom: alto de lo que tapa el mapa por abajo (la tarjeta del negocio), para que la ruta quede a la vista. */
+      setRoute: function (coords, pad) {
+        routeCoords = coords; if (styleReady) { removeRoute(); } drawRoute();
+        var w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+        coords.forEach(function (p) { w = Math.min(w, p[0]); e = Math.max(e, p[0]); s = Math.min(s, p[1]); n = Math.max(n, p[1]); });
+        var H = o.container.clientHeight || 500, top = 130, bottom = Math.min((pad && pad.bottom) || 200, Math.max(40, H - top - 120));
+        map.fitBounds([[w, s], [e, n]], { padding: { top: top, bottom: bottom, left: 40, right: 40 }, maxZoom: 17.5, duration: reduce ? 0 : 700 });
+        return true;
+      },
+      clearRoute: function () { routeCoords = null; if (styleReady) { removeRoute(); } },
+      hasRoute: function () { return !!map.getLayer(RT + '-line'); },
       center: function () { var c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
       clearUser: function () { user = null; if (userMarker) { userMarker.remove(); userMarker = null; } if (styleReady) { removeAccuracy(); } },
       hasAccuracy: function () { return !!map.getLayer(ACC + '-fill'); },
@@ -211,6 +241,9 @@
       clearUser: function () { lastUser = null; impl.clearUser(); },
       centerOnUser: function () { impl.centerOnUser(); },
       followUser: function () { impl.followUser(); },   // Fase 2: recentra sin cambiar el zoom
+      setRoute: function (coords, pad) { return impl.setRoute(coords, pad); },   // Fase 3: devuelve false si el motor no puede
+      clearRoute: function () { impl.clearRoute(); },
+      hasRoute: function () { return impl.hasRoute(); },
       user: function () { return lastUser; },             // para pruebas
       center: function () { return impl.center(); },      // para pruebas
       hasAccuracy: function () { return impl.hasAccuracy ? impl.hasAccuracy() : false; }, // para pruebas
