@@ -275,7 +275,8 @@ button, input, select { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) { .dock-fig.is-poked svg { animation: none; } }
 
 /* ===== Módulo 01: Mi ubicación ===== */
-.map-locate { position: absolute; top: 80px; right: 10px; z-index: 6; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; background: var(--surface); color: var(--ink); border-radius: var(--r-pill); font-weight: 600; font-size: 14px; box-shadow: 0 2px 10px rgba(22,48,43,.18); }
+.map-geo { position: absolute; top: 80px; right: 10px; z-index: 6; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.map-locate { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; background: var(--surface); color: var(--ink); border-radius: var(--r-pill); font-weight: 600; font-size: 14px; box-shadow: 0 2px 10px rgba(22,48,43,.18); }
 .map-locate:hover { background: var(--hover); }
 .map-locate.is-on .i-locate { color: var(--geo); fill: var(--geo); }
 .map-locate[aria-busy="true"] { cursor: progress; }
@@ -293,3 +294,8 @@ button, input, select { font: inherit; color: inherit; }
 .user-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--geo); border: 3px solid #FFFFFF; box-shadow: 0 0 0 1px rgba(15,26,34,.25), 0 2px 8px rgba(15,26,34,.35); pointer-events: none; }
 .user-dot--svg { position: absolute; transform: translate(-50%, -50%); z-index: 3; }
 @media (prefers-reduced-motion: reduce) { .map-locate[aria-busy="true"] .i-locate { animation: none; opacity: .5; } }
+/* Fase 2: seguimiento */
+.map-pill { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: var(--surface); color: var(--ink); font-weight: 600; font-size: 13px; box-shadow: 0 2px 10px rgba(22,48,43,.18); }
+.map-pill:hover { background: var(--hover); }
+#map-track-stop { background: var(--strong); color: var(--on-strong); }
+.map-locate.is-tracking .i-locate { color: var(--geo); fill: var(--geo); }

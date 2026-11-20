@@ -74,7 +74,7 @@
         return true;
       },
       clearUser: function () { if (dot) { dot.remove(); dot = null; } },
-      centerOnUser: function () {},
+      centerOnUser: function () {}, followUser: function () {}, center: function () { return null; },
       destroy: function () { o.container.innerHTML = ''; }
     };
   }
@@ -134,14 +134,28 @@
       if (map.getSource(ACC)) { map.removeSource(ACC); }
     }
     map.on('style.load', drawAccuracy); // setStyle (cambio de tema) borra las capas propias: se vuelven a añadir
+    /* Movimiento manual (arrastrar, pellizcar, rueda o botones +/−): MapLibre incluye originalEvent solo en esos casos. */
+    ['dragstart', 'zoomstart'].forEach(function (ev) { map.on(ev, function (e) { if (e && e.originalEvent && o.onManualMove) { o.onManualMove(); } }); });
+    var anim = null;
     return {
-      setUser: function (u) {
-        user = u;
-        if (!userMarker) { userMarker = new ML.Marker({ element: makeUserDot(), anchor: 'center' }).setLngLat([u.lng, u.lat]).addTo(map); }
-        else { userMarker.setLngLat([u.lng, u.lat]); }
-        drawAccuracy();
+      /* opts.animate: el punto se desliza ~0,6 s hacia la nueva posición (sin reconstruir nada).
+         Sin animación con movimiento reducido o si el salto es mayor de 500 m. */
+      setUser: function (u, opts) {
+        var prev = user; user = u;
+        if (!userMarker) { userMarker = new ML.Marker({ element: makeUserDot(), anchor: 'center' }).setLngLat([u.lng, u.lat]).addTo(map); drawAccuracy(); return true; }
+        if (anim) { cancelAnimationFrame(anim); anim = null; }
+        var far = prev ? Cerca.geo.distanceM(prev, u) > 500 : true;
+        if (!(opts && opts.animate) || reduce || far) { userMarker.setLngLat([u.lng, u.lat]); drawAccuracy(); return true; }
+        var from = userMarker.getLngLat(), t0 = performance.now();
+        (function step(t) {
+          var k = Math.min(1, (t - t0) / 600); k = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+          userMarker.setLngLat([from.lng + (u.lng - from.lng) * k, from.lat + (u.lat - from.lat) * k]);
+          if (k < 1) { anim = requestAnimationFrame(step); } else { anim = null; drawAccuracy(); }
+        })(t0);
         return true;
       },
+      followUser: function () { if (user) { map.easeTo({ center: [user.lng, user.lat], duration: reduce ? 0 : 600 }); } },
+      center: function () { var c = map.getCenter(); return { lat: c.lat, lng: c.lng }; },
       clearUser: function () { user = null; if (userMarker) { userMarker.remove(); userMarker = null; } if (styleReady) { removeAccuracy(); } },
       hasAccuracy: function () { return !!map.getLayer(ACC + '-fill'); },
       centerOnUser: function () {
@@ -193,9 +207,12 @@
       resize: function () { impl.resize(); },
       setTheme: function (t) { impl.setTheme(t); },
       /* Tu ubicación (Módulo 01). setUser devuelve false si el motor actual no puede mostrarla. */
-      setUser: function (u) { lastUser = u; return impl.setUser(u); },
+      setUser: function (u, opts) { lastUser = u; return impl.setUser(u, opts); },
       clearUser: function () { lastUser = null; impl.clearUser(); },
       centerOnUser: function () { impl.centerOnUser(); },
+      followUser: function () { impl.followUser(); },   // Fase 2: recentra sin cambiar el zoom
+      user: function () { return lastUser; },             // para pruebas
+      center: function () { return impl.center(); },      // para pruebas
       hasAccuracy: function () { return impl.hasAccuracy ? impl.hasAccuracy() : false; }, // para pruebas
       isReal: function () { return status === 'maplibre'; },
       status: status

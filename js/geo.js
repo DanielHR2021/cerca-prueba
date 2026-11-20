@@ -34,6 +34,21 @@
     });
   }
 
+  /* Fase 2: seguimiento con watchPosition, solo en primer plano (la interfaz lo pausa al ocultarse la página).
+     onFix(u) recibe { lat, lng, accuracy, ts }; onError(err) recibe { code, message }. Devuelve stop(). */
+  var WATCH_OPTIONS = { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 };
+  function watch(onFix, onError) {
+    var api = provider();
+    if (!api || typeof api.watchPosition !== 'function') { setTimeout(function () { onError(fail('unsupported')); }, 0); return function () {}; }
+    var id = api.watchPosition(function (p) {
+      var c = p && p.coords;
+      if (c && isFinite(c.latitude) && isFinite(c.longitude)) { onFix({ lat: c.latitude, lng: c.longitude, accuracy: isFinite(c.accuracy) ? c.accuracy : null, ts: p.timestamp || Date.now() }); }
+    }, function (err) {
+      onError(fail(err && err.code === 1 ? 'denied' : err && err.code === 3 ? 'timeout' : 'unavailable'));
+    }, WATCH_OPTIONS);
+    return function stop() { try { api.clearWatch(id); } catch (e) { /* ya detenido */ } };
+  }
+
   /* Distancia en metros entre dos puntos {lat, lng} (fórmula del semiverseno). */
   function distanceM(a, b) {
     var R = 6371000, r = Math.PI / 180;
@@ -46,5 +61,7 @@
     return (m < 10000 ? (m / 1000).toFixed(1).replace('.', ',') : Math.round(m / 1000)) + ' km';
   }
 
-  Cerca.geo = { locate: locate, distanceM: distanceM, fmtDistance: fmtDistance, OPTIONS: OPTIONS, provider: undefined };
+  Cerca.geo = { locate: locate, watch: watch, distanceM: distanceM, fmtDistance: fmtDistance, OPTIONS: OPTIONS, WATCH_OPTIONS: WATCH_OPTIONS,
+    TRACK_MAX_MS: 10 * 60 * 1000, // el seguimiento se detiene solo a los 10 minutos (batería)
+    provider: undefined };
 })();

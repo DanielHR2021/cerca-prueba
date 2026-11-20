@@ -183,6 +183,7 @@
     if (state.view === 'saved') { renderSaved(); }
     if (state.view === 'owner' && Cerca.editor) { Cerca.editor.refresh(); }
     if (state.view === 'draft' && Cerca.editor) { $('#draft-profile').innerHTML = Cerca.profiles.render(Cerca.editor.draft(), profileHelpers(true)); }
+    if (state.view !== 'home' && geoCtl && geoCtl.tracking()) { geoCtl.stopTracking('Detuvimos el seguimiento al salir del mapa.'); }
     if (state.view === 'home') {
       render(); map.resize();
       if (state.sel) { map.select(state.sel); }
@@ -206,8 +207,10 @@
     loading: 'Cargando el mapa real…',
     fallback: 'Mapa real no disponible. Esto es solo un esquema de referencia.'
   };
+  var onManualMove = function () {}; // lo define el módulo de ubicación (Fase 2)
   var map = Cerca.createMap({
     container: $('#map'), businesses: DATA, config: C, onSelect: function (id) { pick(id, true); },
+    onManualMove: function () { onManualMove(); },
     onStatus: function (s, why) {
       statusEl.hidden = s === 'maplibre'; statusEl.textContent = STATUS_TEXT[s] || '';
       if (s === 'fallback' && why) { statusEl.title = why; }
@@ -215,14 +218,18 @@
   });
   $('#map-home-label').textContent = C.municipioNombre;
   $('#map-home').setAttribute('aria-label', 'Volver a ' + C.municipioNombre);
-  $('#map-home').addEventListener('click', function () { map.home(); });
+  $('#map-home').addEventListener('click', function () { onManualMove(); map.home(); });
 
-  /* ---------- Módulo 01: Mi ubicación ----------
-     El permiso se pide solo al pulsar el botón. Las coordenadas quedan en memoria: no se guardan ni se envían. */
-  (function () {
+  /* ---------- Módulo 01: Mi ubicación (Fase 1) y seguimiento (Fase 2) ----------
+     El permiso se pide solo al pulsar el botón. Las coordenadas quedan en memoria: no se guardan ni se envían.
+     El seguimiento solo corre con la app en primer plano y con el mapa a la vista. */
+  var geoCtl = (function () {
     var btn = $('#map-locate'), lbl = $('#map-locate-lbl'), box = $('#geo-msg'), txt = $('#geo-msg-text'), acts = $('#geo-msg-acts');
+    var stopBtn = $('#map-track-stop'), recenterBtn = $('#map-recenter'), group = $('#map-geo');
     var busy = false, here = null, hideTimer = null, center = { lat: C.mapCenter[1], lng: C.mapCenter[0] };
+    var stopWatch = null, tracking = false, paused = false, follow = false, lastFix = null, lastAt = 0, limitTimer = null;
     function hide() { box.hidden = true; clearTimeout(hideTimer); }
+    function place() { box.style.top = (group.offsetTop + group.offsetHeight + 8) + 'px'; } // el aviso va bajo los botones
     function show(text, opts) {
       opts = opts || {};
       txt.textContent = text; acts.innerHTML = '';
@@ -230,14 +237,59 @@
         var b = document.createElement('button'); b.type = 'button'; b.className = 'geo-act'; b.textContent = a[0];
         b.addEventListener('click', a[1]); acts.appendChild(b);
       });
-      box.classList.toggle('is-error', !!opts.error); box.hidden = false;
+      box.classList.toggle('is-error', !!opts.error); box.hidden = false; place();
       clearTimeout(hideTimer); if (opts.autoHide) { hideTimer = setTimeout(hide, opts.autoHide); }
     }
     function setBusy(b) {
       busy = b; btn.setAttribute('aria-busy', b ? 'true' : 'false');
-      lbl.textContent = b ? 'Buscando…' : (here ? 'Actualizar ubicación' : 'Mi ubicación');
+      lbl.textContent = b ? 'Buscando…' : tracking ? 'Siguiéndote' : (here ? 'Actualizar ubicación' : 'Mi ubicación');
     }
-    function clearUser() { here = null; map.clearUser(); btn.classList.remove('is-on'); setBusy(false); show('Quitamos tu ubicación del mapa.', { autoHide: 3000 }); }
+    function paintTracking() {
+      stopBtn.hidden = !tracking; recenterBtn.hidden = !(tracking && !follow);
+      btn.classList.toggle('is-tracking', tracking); setBusy(false); if (!box.hidden) { place(); }
+    }
+
+    /* ---- Fase 2: seguimiento ---- */
+    function onFix(u) {
+      // Ahorro: se ignoran cambios menores a 5 m (o a media precisión) si llegan en menos de 15 s.
+      var now = Date.now();
+      if (lastFix && now - lastAt < 15000 && Cerca.geo.distanceM(lastFix, u) < Math.max(5, (u.accuracy || 0) / 2) &&
+          Math.abs((u.accuracy || 0) - (lastFix.accuracy || 0)) < 10) { return; }
+      lastFix = u; lastAt = now; here = u;
+      map.setUser(u, { animate: true });
+      if (follow) { map.followUser(); }
+    }
+    function onWatchError(err) {
+      if (err.code === 'timeout') { return; } // pasajero: se sigue esperando la próxima posición
+      stopTracking(); show(err.message, { error: true });
+    }
+    function startWatch() { stopWatch = Cerca.geo.watch(onFix, onWatchError); }
+    function startTracking() {
+      if (tracking) { return; }
+      tracking = true; follow = true; paused = false; lastFix = here; lastAt = Date.now();
+      startWatch(); paintTracking(); map.followUser();
+      clearTimeout(limitTimer);
+      limitTimer = setTimeout(function () { stopTracking('Detuvimos el seguimiento después de ' + Math.round(Cerca.geo.TRACK_MAX_MS / 60000) + ' minutos para ahorrar batería. Puedes volver a activarlo.'); }, Cerca.geo.TRACK_MAX_MS);
+      show('Te seguimos mientras la app esté abierta en el mapa. Toca «Detener seguimiento» cuando termines.', { autoHide: 5000 });
+    }
+    function stopTracking(reason) {
+      if (!tracking) { return; }
+      if (stopWatch) { stopWatch(); stopWatch = null; }
+      tracking = false; follow = false; paused = false; clearTimeout(limitTimer); paintTracking();
+      if (reason) { show(reason, { autoHide: 6000 }); }
+    }
+    function recenter() { follow = true; paintTracking(); map.followUser(); }
+    onManualMove = function () { if (tracking && follow) { follow = false; paintTracking(); } };
+    // Nunca en segundo plano: al ocultarse la página se pausa y al volver se reanuda.
+    document.addEventListener('visibilitychange', function () {
+      if (!tracking) { return; }
+      if (document.hidden && stopWatch) { stopWatch(); stopWatch = null; paused = true; }
+      else if (!document.hidden && paused) { paused = false; startWatch(); }
+    });
+    stopBtn.addEventListener('click', function () { stopTracking('Seguimiento detenido. Tu ubicación queda en el mapa hasta que la quites.'); });
+    recenterBtn.addEventListener('click', recenter);
+
+    function clearUser() { stopTracking(); here = null; lastFix = null; map.clearUser(); btn.classList.remove('is-on'); setBusy(false); show('Quitamos tu ubicación del mapa.', { autoHide: 3000 }); }
     function locate() {
       if (busy) { return; }
       setBusy(true); show('Buscando tu ubicación…');
@@ -251,7 +303,8 @@
           parts.push('Estás a ' + Cerca.geo.fmtDistance(far) + ' de ' + C.municipioNombre + ', donde están los negocios.');
           list.unshift(['Volver a ' + C.municipioNombre, function () { map.home(); hide(); }]);
         }
-        if (shown) { map.centerOnUser(); }
+        if (shown && !tracking) { list.unshift(['Seguir mi ubicación', startTracking]); }
+        if (shown) { if (tracking) { follow = true; paintTracking(); map.followUser(); } else { map.centerOnUser(); } }
         show(parts.join(' '), { acts: list });
       }, function (err) {
         setBusy(false);
@@ -260,6 +313,7 @@
     }
     btn.addEventListener('click', locate);
     $('#geo-msg-close').addEventListener('click', hide);
+    return { stopTracking: stopTracking, tracking: function () { return tracking; } };
   })();
 
   /* Tema claro (dirección A) y oscuro (dirección C); la preferencia se recuerda. */
@@ -292,7 +346,7 @@
     if (afterFilterChange().length && state.q.trim()) { mascot('search'); }
   });
   $('#search-form').addEventListener('submit', function (e) { e.preventDefault(); el.input.blur(); });
-  $('#pane-list').addEventListener('click', function () { state.pane = 'list'; render(); });
+  $('#pane-list').addEventListener('click', function () { state.pane = 'list'; render(); if (geoCtl.tracking()) { geoCtl.stopTracking('Detuvimos el seguimiento al pasar a la lista.'); } });
   $('#pane-map').addEventListener('click', function () { state.pane = 'map'; render(); map.resize(); });
   $('#clear-saved').addEventListener('click', function () {
     if (!saved.length) { return; }
@@ -313,7 +367,7 @@
   /* API para el asistente y el editor: solo funciones que existen en la interfaz. */
   Cerca.app = {
     profileHelpers: profileHelpers,
-    mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy() }; }, // solo para pruebas
+    mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy(), user: map.user(), center: map.center(), tracking: geoCtl.tracking() }; }, // solo para pruebas
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
     view: function () { return state.view; }, profile: function () { return state.profile; },
     search: function (q) { state.q = q; state.cat = 'Todos'; state.openOnly = false; state.pane = 'list'; el.input.value = q; renderChips(); go('#/'); return afterFilterChange(); },
