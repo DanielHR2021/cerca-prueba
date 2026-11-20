@@ -5,7 +5,9 @@
    (b/v, c/s/z, ll/y, h muda, qu/k). La tolerancia a errores es controlada: nada en palabras de 4 letras
    o menos, 1 error hasta 7 letras, 2 desde 8; solo en campos fuertes y con la misma letra inicial.
    «Empieza por» (palabra a medio escribir) es una señal débil: solo cuenta si ningún negocio tiene una
-   coincidencia fuerte. Así «pan» encuentra panaderías y no «pantallas» de un taller de celulares. */
+   coincidencia fuerte. Así «pan» encuentra panaderías y no «pantallas» de un taller de celulares.
+   M03: con 1 letra no se filtra (tooShort); con 2 letras solo cuenta «empieza por» en nombre y categoría
+   (o una palabra exacta de 2 letras). Pesos: nombre > categoría > productos > palabras clave > descripción. */
 (function () {
   window.Cerca = window.Cerca || {};
   var STOP = new Set(('a al algo algun alguna aqui ayuda busco buscar con cerca comprar de del donde el en encontrar es esta estoy hay la las lo los me mi ' +
@@ -17,7 +19,9 @@
     remedio: ['medicamento', 'farmacia'], medicina: ['medicamento', 'farmacia'], droga: ['medicamento'],
     cortar: ['corte'], motilar: ['corte', 'barberia'], imprimir: ['impresion'], fotocopia: ['copias'], tinto: ['cafe']
   };
-  var FIELDS = [['name', 3], ['tags', 3], ['cat', 2.5], ['text', 1]];
+  /* M03: prioridad nombre > categoría y tipo > productos y servicios > palabras clave y etiquetas > descripción. */
+  var FIELDS = [['name', 3], ['cat', 2.6], ['prod', 2.3], ['tags', 2], ['text', 1]];
+  var MIN_LEN = 2; // con 1 letra no se busca
 
   function strip(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
   function words(s) { return strip(s).split(/[^a-z0-9ñ]+/).filter(Boolean); }
@@ -57,6 +61,8 @@
      q: 1 exacta, .95 suena igual, .85 sinónimo, .75 contiene la palabra clave, .7 error tolerado, .4/.2 empieza por (débil). */
   function quality(t, w, field) {
     if (t.raw === w.raw || t.st === w.st) { return { q: 1 }; }
+    // Término de 2 letras (palabra a medio escribir): solo «empieza por» en el nombre o la categoría.
+    if (t.raw.length <= 2) { return (field === 'name' || field === 'cat') && w.raw.indexOf(t.raw) === 0 ? { q: 0.4, weak: true } : null; }
     if (t.ph.length >= 3 && t.ph === w.ph) { return { q: 0.95 }; }
     if (field !== 'text') {
       var L = t.st.length, allowed = L <= 4 ? 0 : L <= 8 ? 1 : 2;
@@ -68,13 +74,15 @@
     return null;
   }
 
+  // Cada palabra recuerda el elemento completo («Pan de sal») para explicar el resultado.
+  function listForms(list) { return list.reduce(function (acc, item) { return acc.concat(words(item).filter(function (w) { return !STOP.has(w); }).map(function (w) { return form(w, item); })); }, []); }
   var cache = {};
   function index(b) {
     if (!cache[b.id]) {
       cache[b.id] = {
         name: forms(b.name),
-        tags: [].concat((b.products || []).map(function (p) { return p.n; }), b.tags || [], b.keywords || []) // productos primero: explican mejor el resultado
-          .reduce(function (acc, item) { return acc.concat(words(item).filter(function (w) { return !STOP.has(w); }).map(function (w) { return form(w, item); })); }, []),
+        prod: listForms((b.products || []).map(function (p) { return p.n; })),
+        tags: listForms([].concat(b.keywords || [], b.tags || [])),
         cat: forms([b.category, b.kindLabel || ''].join(' ')),
         text: forms([b.blurb, b.description].join(' '))
       };
@@ -94,6 +102,8 @@
      - hits[id] = palabra de productos/etiquetas que explica el resultado (para mostrarla). */
   function rank(items, query) {
     var tokens = tokensOf(query);
+    // Con una sola letra no se filtra (demasiado ambiguo): se devuelven todos y se avisa con tooShort.
+    if (tokens.length === 1 && tokens[0].main.raw.length < MIN_LEN) { return { items: items.slice(), approximate: false, hits: {}, tooShort: true }; }
     if (!tokens.length) { return { items: items.slice(), approximate: false, hits: {} }; }
     /* 1.ª pasada: mejor coincidencia de cada término en cada negocio. */
     var perDoc = items.map(function (b) {
@@ -120,7 +130,7 @@
         if (!best || (exactTok[i] && (best.m.approx || best.m.weak))) { return; }
         matched++; score += best.v;
         if (!best.m.weak) { strong++; if (best.m.approx) { approx = true; } }
-        if (!hit && best.f === 'tags' && !best.m.weak) { hit = best.w.orig; }
+        if (!hit && (best.f === 'prod' || best.f === 'tags') && !best.m.weak) { hit = best.w.orig; }
       });
       if (matched) { scored.push({ b: b, score: score, strong: strong, matched: matched, approx: approx, hit: hit, pos: pos }); }
     });

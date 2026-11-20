@@ -7,8 +7,8 @@
 <meta name="description" content="Prototipo de plataforma para descubrir negocios locales. Datos de demostración.">
 <script>/* aplica el tema antes de pintar para evitar un destello */(function(){var t;try{t=localStorage.getItem('cerca.theme')}catch(e){}if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t})();</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=13">
-<link rel="stylesheet" href="css/profiles.css?v=13">
+<link rel="stylesheet" href="css/styles.css?v=14">
+<link rel="stylesheet" href="css/profiles.css?v=14">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16302B">
 <link rel="manifest" href="manifest.webmanifest">
@@ -44,8 +44,10 @@
       <form id="search-form" role="search" class="search">
         <label for="q" class="sr-only">Buscar negocios</label>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Busca pan, copias, almuerzo…">
+        <input id="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Busca pan, copias, almuerzo…" aria-describedby="q-live">
+        <button type="button" class="search-clear" id="q-clear" aria-label="Limpiar la búsqueda" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </form>
+      <p class="q-live" id="q-live" hidden><span id="q-live-text"></span> <button type="button" class="q-live-go" id="q-live-go">Ver resultados</button></p>
       <div class="chips" id="chips" role="group" aria-label="Filtros"></div>
     </div>
     <div class="hero-mascot" id="hero-mascot" aria-hidden="true"></div>
@@ -73,6 +75,17 @@
       <p class="map-status" id="map-status" role="status" hidden></p>
       <div class="geo-msg" id="geo-msg" role="status" aria-live="polite" hidden><p id="geo-msg-text"></p><div class="geo-msg-acts" id="geo-msg-acts"></div><button type="button" class="geo-msg-close" id="geo-msg-close" aria-label="Cerrar aviso"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <article class="selcard" id="selcard" hidden aria-live="polite"></article>
+      <section class="rsheet" id="rsheet" data-state="hidden" aria-label="Resultados de la búsqueda" hidden>
+        <div class="rsheet-head">
+          <button type="button" class="rsheet-title" id="rsheet-toggle" aria-expanded="false" aria-controls="rsheet-body"><span class="rsheet-grip" aria-hidden="true"></span><span id="rsheet-count"></span></button>
+          <button type="button" class="rsheet-btn" id="rsheet-size" aria-label="Ampliar los resultados"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button type="button" class="rsheet-btn" id="rsheet-clear" aria-label="Quitar la búsqueda"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="rsheet-body" id="rsheet-body">
+          <ul class="rlist" id="rlist"></ul>
+          <div class="rsheet-empty" id="rsheet-empty" hidden><p id="rsheet-empty-text"></p><button type="button" class="geo-act" id="rsheet-empty-clear">Quitar búsqueda</button></div>
+        </div>
+      </section>
     </section>
   </main>
 </div>
@@ -211,17 +224,17 @@
   </form>
 </section>
 
-<script src="js/config.js?v=13"></script>
-<script src="js/data.js?v=13"></script>
-<script src="js/map.js?v=13"></script>
-<script src="js/geo.js?v=13"></script>
-<script src="js/routing.js?v=13"></script>
-<script src="js/search.js?v=13"></script>
-<script src="js/brand.js?v=13"></script>
-<script src="js/profiles.js?v=13"></script>
-<script src="js/editor.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
-<script src="js/assistant.js?v=13"></script>
+<script src="js/config.js?v=14"></script>
+<script src="js/data.js?v=14"></script>
+<script src="js/map.js?v=14"></script>
+<script src="js/geo.js?v=14"></script>
+<script src="js/routing.js?v=14"></script>
+<script src="js/search.js?v=14"></script>
+<script src="js/brand.js?v=14"></script>
+<script src="js/profiles.js?v=14"></script>
+<script src="js/editor.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
+<script src="js/assistant.js?v=14"></script>
 <script>/* PWA: registra el service worker si el navegador lo admite (solo https o localhost) */if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>

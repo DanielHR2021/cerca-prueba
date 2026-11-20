@@ -63,9 +63,9 @@
       return (state.cat === 'Todos' || b.category === state.cat) && (!state.openOnly || isOpen(b));
     });
     var q = state.q.trim();
-    if (!q) { state.approx = false; state.hits = {}; return items; }
+    if (!q) { state.approx = false; state.hits = {}; state.tooShort = false; return items; }
     var r = Cerca.search.rank(items, q);
-    state.approx = r.approximate; state.hits = r.hits;
+    state.approx = r.approximate; state.hits = r.hits; state.tooShort = !!r.tooShort;
     return r.items;
   }
 
@@ -91,11 +91,57 @@
       return '<button type="button" class="chip" data-cat="' + esc(c) + '" aria-pressed="' + (state.cat === c) + '">' + esc(c) + '</button>';
     }).join('') + '<button type="button" class="chip chip--open" id="open-only" aria-pressed="' + state.openOnly + '">Abierto ahora</button>';
   }
-  function renderList(items) {
-    el.list.innerHTML = items.map(function (b) { return cardHtml(b, 'pick'); }).join('');
-    el.count.textContent = items.length + (items.length === 1 ? ' negocio' : ' negocios') + (state.approx && items.length ? ', coincidencia aproximada' : '');
-    el.empty.hidden = items.length > 0;
+  /* M03: texto del número de resultados, común a la lista, al panel del mapa y a la línea bajo el buscador. */
+  function countText(items) {
+    var q = state.q.trim();
+    if (q && state.tooShort) { return 'Escribe al menos 2 letras para buscar'; }
+    return items.length + (items.length === 1 ? ' negocio' : ' negocios') + (q ? ' para «' + q + '»' : '') + (state.approx && items.length ? ', coincidencia aproximada' : '');
   }
+  var lastListQ = null;
+  // Fundido corto de los resultados solo cuando cambia la búsqueda (no al seleccionar).
+  function replay(list, q) { if (q === list._q) { return; } list._q = q; list.classList.remove('r-anim'); void list.offsetWidth; list.classList.add('r-anim'); }
+  function renderList(items) {
+    el.list.innerHTML = items.map(function (b, i) { return cardHtml(b, 'pick').replace('<li class="card', '<li style="--i:' + i + '" class="card'); }).join('');
+    el.count.textContent = countText(items);
+    el.empty.hidden = items.length > 0;
+    replay(el.list, state.q.trim() + '|' + state.cat + '|' + state.openOnly);
+  }
+
+  /* ---------- M03: panel de resultados sobre el mapa (celular) ---------- */
+  var sheet = 'hidden'; // hidden | min (solo cabecera) | peek (compacto) | full (expandido)
+  function distLabel(b) {
+    var u = map.user(); // solo si el usuario ya compartió su ubicación en esta visita y es precisa
+    if (!u || !isFinite(u.accuracy) || u.accuracy > 100) { return ''; }
+    return '<span class="ritem-dist">≈ ' + Cerca.geo.fmtDistance(Cerca.geo.distanceM(u, b)) + '<small>en línea recta</small></span>';
+  }
+  function ritemHtml(b, i) {
+    var hit = state.hits && state.hits[b.id], pic = typeof b.photo === 'string' ? b.photo : '';
+    return '<li style="--i:' + i + '"><button type="button" class="ritem' + (state.sel === b.id ? ' is-sel' : '') + '" data-rpick="' + b.id + '">' +
+      (pic ? '<img class="ritem-pic" src="' + esc(pic) + '" alt="">' : '<span class="card-ico pfv" style="' + Cerca.profiles.vars(b) + '">' + Cerca.profiles.icon(b.icon, 22) + '</span>') +
+      '<span class="ritem-txt"><span class="ritem-name">' + esc(b.name) + '</span><span class="ritem-meta">' + esc(b.category) +
+      (hit ? ' · <span class="sr-only">coincide con </span>' + esc(hit) : '') + '</span></span>' + distLabel(b) + '</button></li>';
+  }
+  function renderSheet(items) {
+    var s = el.sheet, q = state.q.trim();
+    if (!q) { sheet = 'hidden'; } else if (sheet === 'hidden') { sheet = 'peek'; }
+    s.dataset.state = sheet;
+    var open = sheet === 'peek' || sheet === 'full';
+    el.wrap.classList.toggle('rs-on', sheet !== 'hidden');
+    el.wrap.classList.toggle('rs-open', open);
+    el.wrap.classList.toggle('rs-min', sheet === 'min');
+    $('#rsheet-toggle').setAttribute('aria-expanded', open);
+    var size = $('#rsheet-size'); size.setAttribute('aria-label', sheet === 'full' ? 'Reducir los resultados' : 'Ampliar los resultados');
+    $('#rsheet-count').textContent = countText(items);
+    $('#q-clear').hidden = !el.input.value; $('#q-live').hidden = !q;
+    if (!q) { return; }
+    var empty = !items.length && !state.tooShort;
+    $('#rlist').innerHTML = state.tooShort ? '' : items.map(ritemHtml).join('');
+    $('#rsheet-empty').hidden = !empty;
+    if (empty) { $('#rsheet-empty-text').textContent = 'No encontré «' + q + '». Prueba con otra palabra' + (state.cat !== 'Todos' || state.openOnly ? ' o quita los filtros.' : '.'); }
+    replay($('#rlist'), q + '|' + state.cat + '|' + state.openOnly);
+    $('#q-live-text').textContent = countText(items);
+  }
+  function setSheet(st) { if (!state.q.trim()) { st = 'hidden'; } sheet = st; render(); }
   var I_CHEV_UP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
   var I_CHEV_DOWN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
   var I_WALK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M9 21l2-6 3 3v3M7 12l3-4 4 1 2 4M11 15l-1-5"/></svg>';
@@ -139,11 +185,12 @@
   }
   function render() {
     var items = filtered();
-    // Si un filtro oculta el negocio seleccionado se deselecciona y su ruta se quita.
-    if (state.sel && items.map(function (b) { return b.id; }).indexOf(state.sel) === -1) { state.sel = null; if (state.route) { state.route = null; map.clearRoute(); } }
+    // Si un filtro o la búsqueda ocultan el negocio seleccionado, se deselecciona; una ruta activa se conserva
+    // (M03: buscar o cerrar resultados nunca la borra; solo «Quitar ruta» o elegir otro negocio).
+    if (state.sel && items.map(function (b) { return b.id; }).indexOf(state.sel) === -1) { state.sel = null; }
     // Cerrar la ficha (sel = null) conserva la ruta: solo «Quitar ruta» o elegir otro negocio la quitan.
     if (state.route && state.sel && state.route.id !== state.sel) { state.route = null; map.clearRoute(); }
-    renderList(items); renderSelCard(items);
+    renderList(items); renderSelCard(items); renderSheet(items);
     var vis = new Set(items.map(function (b) { return b.id; }));
     var closed = new Set(DATA.filter(function (b) { return !isOpen(b); }).map(function (b) { return b.id; }));
     map.update({ visible: vis, selected: state.sel, closed: closed });
@@ -173,6 +220,7 @@
   }
   function pick(id, fromMap) {
     if (state.route && state.route.id !== id) { clearRoute(); } // la ruta corresponde a otro negocio
+    if (sheet === 'peek' || sheet === 'full') { sheet = 'min'; } // un solo panel abajo: se recogen los resultados y se ve la ficha
     state.sel = id; render();
     if (!fromMap) { map.select(id); }
   }
@@ -236,6 +284,15 @@
   /* ---------- Arranque ---------- */
   el.chips = $('#chips'); el.list = $('#list'); el.count = $('#count'); el.empty = $('#empty'); el.emptyText = $('#empty-text');
   el.selcard = $('#selcard'); el.discover = $('#main'); el.input = $('#q');
+  el.sheet = $('#rsheet'); el.wrap = $('.mapwrap'); el.sheet.hidden = false; // el estado visual lo da data-state
+  // Alturas para el panel (porcentaje del mapa) y para subir la atribución del mapa por encima del panel.
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () {
+      el.wrap.style.setProperty('--map-h', el.wrap.clientHeight + 'px');
+      el.wrap.style.setProperty('--rs-h', el.sheet.offsetHeight + 'px');
+    }).observe(el.wrap);
+    new ResizeObserver(function () { el.wrap.style.setProperty('--rs-h', el.sheet.offsetHeight + 'px'); }).observe(el.sheet);
+  }
   /* Mascota Nubi (Dúo) en la portada y en «sin resultados» */
   $('#hero-mascot').innerHTML = Cerca.brand.mascot('feliz');
   $('#empty-mascot').innerHTML = Cerca.brand.mascot('triste');
@@ -248,7 +305,9 @@
   var map = Cerca.createMap({
     container: $('#map'), businesses: DATA, config: C, onSelect: function (id) { pick(id, true); },
     onManualMove: function () { onManualMove(); },
-    onBackgroundClick: function () { if (state.sel) { cancelAutoMin(); state.sel = null; animateCard(render); } }, // ajuste UX: tocar el fondo cierra la ficha (con ruta activa queda minimizada)
+    onBackgroundClick: function () {
+      if (sheet === 'peek' || sheet === 'full') { setSheet('min'); return; } // M03: tocar el mapa recoge los resultados (la búsqueda sigue)
+      if (state.sel) { cancelAutoMin(); state.sel = null; animateCard(render); } }, // ajuste UX: tocar el fondo cierra la ficha (con ruta activa queda minimizada)
     onStatus: function (s, why) {
       statusEl.hidden = s === 'maplibre'; statusEl.textContent = STATUS_TEXT[s] || '';
       if (s === 'fallback' && why) { statusEl.title = why; }
@@ -448,13 +507,48 @@
   el.list.addEventListener('click', function (e) { var b = e.target.closest('[data-pick]'); if (b) { pick(+b.dataset.pick, false); } });
   $('#saved-list').addEventListener('click', function (e) { var b = e.target.closest('[data-map]'); if (b) { showMap(+b.dataset.map); } });
   document.addEventListener('click', function (e) { var b = e.target.closest('[data-save]'); if (b) { toggleSave(+b.dataset.save); } });
-  el.input.addEventListener('input', function () {
+  /* M03: búsqueda en vivo con una espera breve, limpiar (botón y Esc) y panel de resultados. */
+  var SEARCH_WAIT = 120, searchTimer = null;
+  function applySearch() {
+    clearTimeout(searchTimer); searchTimer = null;
+    if (state.q === el.input.value) { return; }
     state.q = el.input.value;
     if (afterFilterChange().length && state.q.trim()) { mascot('search'); }
+  }
+  function clearSearch() { el.input.value = ''; applySearch(); }
+  function narrow() { return window.matchMedia('(max-width: 900px)').matches; }
+  // En el celular, tras buscar, se baja hasta el mapa para ver el panel por encima de la navegación inferior.
+  function showResults() {
+    applySearch(); el.input.blur();
+    if (!state.q.trim() || !narrow() || state.pane !== 'map') { return; }
+    setSheet('peek');
+    var nav = $('.nav'), navH = nav && getComputedStyle(nav).position === 'fixed' ? nav.offsetHeight : 0;
+    var r = el.wrap.getBoundingClientRect(), target = window.scrollY + r.bottom - (window.innerHeight - navH - 8);
+    if (target > window.scrollY) { window.scrollTo({ top: target, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+  }
+  el.input.addEventListener('input', function () {
+    $('#q-clear').hidden = !el.input.value;
+    clearTimeout(searchTimer); searchTimer = setTimeout(applySearch, SEARCH_WAIT);
   });
-  $('#search-form').addEventListener('submit', function (e) { e.preventDefault(); el.input.blur(); });
+  el.input.addEventListener('keydown', function (e) { if (e.key === 'Escape' && el.input.value) { e.preventDefault(); clearSearch(); } });
+  $('#search-form').addEventListener('submit', function (e) { e.preventDefault(); showResults(); });
+  $('#q-clear').addEventListener('click', function () { clearSearch(); el.input.focus(); });
+  // La línea «N negocios · Ver resultados» solo se ve mientras se escribe (con el teclado abierto el panel queda abajo).
+  var hero = $('.hero');
+  el.input.addEventListener('focus', function () { hero.classList.add('is-typing'); });
+  el.input.addEventListener('blur', function () { hero.classList.remove('is-typing'); });
+  $('#q-live-go').addEventListener('pointerdown', function (e) { e.preventDefault(); }); // no quitar el foco antes del clic
+  $('#q-live-go').addEventListener('click', showResults);
+  $('#rsheet-toggle').addEventListener('click', function () { setSheet(sheet === 'min' ? 'peek' : 'min'); });
+  $('#rsheet-size').addEventListener('click', function () { setSheet(sheet === 'full' ? 'peek' : 'full'); });
+  $('#rsheet-clear').addEventListener('click', clearSearch);
+  $('#rsheet-empty-clear').addEventListener('click', clearSearch);
+  $('#rlist').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-rpick]'); if (!b) { return; }
+    pick(+b.dataset.rpick, false); // centra el mapa, abre la ficha y recoge el panel (la ruta activa se conserva si es de este negocio)
+  });
   $('#pane-list').addEventListener('click', function () { state.pane = 'list'; render(); if (geoCtl.tracking()) { geoCtl.stopTracking('Detuvimos el seguimiento al pasar a la lista.'); } });
-  $('#pane-map').addEventListener('click', function () { state.pane = 'map'; render(); map.resize(); });
+  $('#pane-map').addEventListener('click', function () { state.pane = 'map'; if (state.q.trim() && sheet === 'hidden') { sheet = 'peek'; } render(); map.resize(); });
   $('#clear-saved').addEventListener('click', function () {
     if (!saved.length) { return; }
     if (window.confirm('¿Borrar los ' + saved.length + ' negocios guardados en este dispositivo?')) { clearSaved(); }
@@ -475,6 +569,7 @@
   Cerca.app = {
     profileHelpers: profileHelpers,
     mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy(), user: map.user(), center: map.center(), tracking: geoCtl.tracking(), routeLayer: map.hasRoute(), route: state.route }; }, // solo para pruebas
+    sheetState: function () { return sheet; }, // solo para pruebas
     cardState: function () { return { visible: !el.selcard.hidden, min: el.selcard.classList.contains('is-min'), timer: !!minTimer, sel: state.sel }; }, // solo para pruebas
     setAutoMinMs: function (ms) { var p = AUTO_MIN_MS; AUTO_MIN_MS = ms; return p; }, // solo para pruebas (acortar la espera)
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
