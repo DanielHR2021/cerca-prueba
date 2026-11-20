@@ -13,17 +13,23 @@
 
   var btn = $('#helper-btn'), panel = $('#assist'), log = $('#assist-log'), quick = $('#assist-quick'), form = $('#assist-form'), input = $('#assist-q'), bubble = $('#assist-bubble');
 
-  /* ---------- Mascota: dos instancias (barra y cabecera del panel) con el mismo estado ---------- */
-  $('#dock-fig').innerHTML = Cerca.mascotSvg('dock');
-  $('#assist-fig').innerHTML = Cerca.mascotSvg('chat');
-  var svgs = [$('#dock-fig svg'), $('#assist-fig svg')];
-  svgs.forEach(function (s) { s.removeAttribute('role'); s.removeAttribute('aria-label'); s.setAttribute('aria-hidden', 'true'); });
-  function setMood(m) { svgs.forEach(function (s) { s.removeAttribute('data-mood'); void s.getBoundingClientRect(); s.setAttribute('data-mood', m); }); }
+  /* ---------- Mascota Nubi (Dúo, js/brand.js): barra y cabecera del panel muestran el mismo estado ----------
+     Los ánimos del asistente se traducen a los 7 estados dibujados de la marca. */
+  var STATE = { neutral: 'feliz', happy: 'feliz', help: 'feliz', welcome: 'feliz', discover: 'feliz', celebrate: 'celebrando',
+    search: 'curiosa', curious: 'curiosa', thinking: 'pensando', surprised: 'sorprendida', empty: 'triste', rest: 'descansando' };
+  var figs = [$('#dock-fig'), $('#assist-fig')], current = null;
+  function setMood(m) {
+    var st = STATE[m] || 'feliz';
+    if (st === current) { return; }
+    current = st;
+    figs.forEach(function (f) { f.innerHTML = Cerca.brand.mascot(st); f.dataset.state = st; var s = f.querySelector('svg'); s.setAttribute('aria-hidden', 'true'); });
+  }
+  setMood('neutral');
   var moodTimer = null;
   function rest() { return panel.hidden ? 'neutral' : 'help'; }
   function mood(m, ms) { setMood(m); clearTimeout(moodTimer); moodTimer = setTimeout(function () { setMood(rest()); }, ms || 1800); }
-  function poke() { var s = svgs[0]; s.classList.remove('is-poked'); void s.getBoundingClientRect(); s.classList.add('is-poked'); }
-  svgs[0].addEventListener('animationend', function (e) { if (e.animationName === 'm-squish') { svgs[0].classList.remove('is-poked'); } });
+  function poke() { var f = figs[0]; f.classList.remove('is-poked'); void f.getBoundingClientRect(); f.classList.add('is-poked'); }
+  figs[0].addEventListener('animationend', function () { figs[0].classList.remove('is-poked'); });
 
   /* ---------- Mensajes y acciones ---------- */
   var acts = {}, actN = 0, lastCtx = null;

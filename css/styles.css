@@ -13,6 +13,8 @@
   --hover: #F1F7F3; --hover-chip: #DCEBE2; --sel-bg: #EAF4EE; --sel-ring: #16302B; --pin-glow: none;
   /* mapa esquemático */
   --mb-land: #E3EFE7; --mb-water: #BFE0EE; --mb-park: #CDE6D4; --mb-road: #FFFFFF; --mb-road2: #FFFFFF; --mb-label: #3E5A52;
+  /* marca Nubi (mascota Dúo y logotipo) */
+  --nb-body: #A8D68A; --nb-lobe: #F2A33A; --nb-face: #16302B; --nb-muted: #4A655D; --nb-rose: #F0A6B8; --nb-sky: #8CC6E3;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
@@ -22,6 +24,7 @@
   --hover: #1F3340; --hover-chip: #223A47; --sel-bg: #1F3340; --sel-ring: #FFFFFF;
   --pin-glow: 0 0 0 6px rgba(255,212,122,.20), 0 0 24px rgba(255,212,122,.55);
   --mb-land: #12202A; --mb-water: #14384A; --mb-park: #143028; --mb-road: #1F3643; --mb-road2: #1B303C; --mb-label: #7FA39A;
+  --nb-lobe: #FFD47A; --nb-face: #0F1A22; --nb-muted: #9DB3AD;
   color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -38,7 +41,11 @@ a { color: inherit; }
 
 /* Barra superior */
 .topbar { display: flex; align-items: center; gap: 12px; padding: 12px var(--pad); background: var(--surface); border-bottom: 1px solid var(--line); }
-.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -.01em; }
+.brand { display: flex; align-items: center; text-decoration: none; color: var(--ink); flex: 0 0 auto; }
+.brand svg { display: block; height: 30px; width: auto; max-width: 100%; overflow: visible; }
+.hero-mascot { flex: 0 0 auto; align-self: flex-end; width: clamp(92px, 11vw, 132px); }
+.hero-mascot svg, .empty-mascot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.empty-mascot { width: 96px; margin: 0 0 8px; }
 .pill-demo { margin: 0 0 0 auto; background: var(--strong); color: var(--on-strong); border-radius: var(--r-pill); padding: 6px 14px; font-size: 13px; font-weight: 500; text-align: center; }
 
 /* Botones */
@@ -51,7 +58,7 @@ a { color: inherit; }
 .hero-main { flex: 1; min-width: 0; }
 h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 40px); line-height: 1.1; letter-spacing: -.01em; }
 .search { display: flex; align-items: center; gap: 10px; max-width: 560px; height: 48px; padding: 0 18px; background: var(--surface); border-radius: var(--r-pill); }
-.search input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 16px; }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 16px; text-overflow: ellipsis; }
 .search input:focus-visible { outline: none; }
 .search:focus-within { outline: 3px solid var(--ink); outline-offset: 2px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -134,8 +141,11 @@ h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-
   .topbar { flex-wrap: wrap; }
   .pill-demo { font-size: 12px; padding: 6px 10px; }
 }
+@media (max-width: 640px) { .hero-mascot { display: none; } }
+@media (max-width: 360px) { .search { padding: 0 14px; gap: 8px; } .search input { font-size: 15px; } }
 @media (max-width: 560px) {
   .hero { gap: 12px; }
+  .brand svg { height: 26px; }
 }
 
 /* Colores del mapa esquemático y de la mascota por tema */
@@ -256,3 +266,8 @@ h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-
 .preview-card { width: 100%; display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 18px; background: var(--bg); border-left: 8px solid var(--cat, #F2A33A); }
 .setting { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%; }
 button, input, select { font: inherit; color: inherit; }
+
+/* Respuesta al tocar a Nubi en la barra (un solo rebote, sin bucles) */
+.dock-fig.is-poked svg { animation: nb-squish .35s ease-out 1; transform-origin: 50% 100%; }
+@keyframes nb-squish { 0%, 100% { transform: scale(1, 1); } 40% { transform: scale(1.06, .92); } }
+@media (prefers-reduced-motion: reduce) { .dock-fig.is-poked svg { animation: none; } }

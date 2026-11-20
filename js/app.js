@@ -198,6 +198,9 @@
   /* ---------- Arranque ---------- */
   el.chips = $('#chips'); el.list = $('#list'); el.count = $('#count'); el.empty = $('#empty'); el.emptyText = $('#empty-text');
   el.selcard = $('#selcard'); el.discover = $('#main'); el.input = $('#q');
+  /* Mascota Nubi (Dúo) en la portada y en «sin resultados» */
+  $('#hero-mascot').innerHTML = Cerca.brand.mascot('feliz');
+  $('#empty-mascot').innerHTML = Cerca.brand.mascot('triste');
   var statusEl = $('#map-status');
   var STATUS_TEXT = {
     loading: 'Cargando el mapa real…',

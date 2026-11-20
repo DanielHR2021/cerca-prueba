@@ -7,22 +7,20 @@
 <meta name="description" content="Prototipo de plataforma para descubrir negocios locales. Datos de demostración.">
 <script>/* aplica el tema antes de pintar para evitar un destello */(function(){var t;try{t=localStorage.getItem('cerca.theme')}catch(e){}if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t})();</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=6">
-<link rel="stylesheet" href="css/mascot.css?v=6">
-<link rel="stylesheet" href="css/profiles.css?v=6">
+<link rel="stylesheet" href="css/styles.css?v=7">
+<link rel="stylesheet" href="css/profiles.css?v=7">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16302B">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/svg+xml" href="assets/brand/favicon.svg">
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
 </head>
 <body>
 <a class="skip" href="#content">Saltar al contenido</a>
 
 <header class="topbar">
   <a class="brand" href="#/" aria-label="Nubi. Ir a Explorar">
-    <svg class="mascot-svg brand-nubi" width="40" height="34" viewBox="14 30 96 76" aria-hidden="true" focusable="false"><g class="m-line"><circle cx="60" cy="54" r="27"/><circle cx="37" cy="64" r="19"/><circle cx="84" cy="62" r="20"/><circle cx="46" cy="44" r="15"/><rect x="20" y="58" width="82" height="30" rx="15"/></g><g class="m-shape"><circle cx="60" cy="54" r="27"/><circle cx="37" cy="64" r="19"/><circle cx="84" cy="62" r="20"/><circle cx="46" cy="44" r="15"/><rect x="20" y="58" width="82" height="30" rx="15"/></g><ellipse class="m-ink" cx="50" cy="62" rx="5" ry="6.4"/><ellipse class="m-ink" cx="70" cy="62" rx="5" ry="6.4"/><g class="m-cheeks"><ellipse cx="40" cy="70" rx="5.5" ry="3.2"/><ellipse cx="80" cy="70" rx="5.5" ry="3.2"/></g><path d="M55 71q5 5 10 0" fill="none" stroke="#16302B" stroke-width="3" stroke-linecap="round"/></svg>
-    <span>Nubi</span>
+    <svg class="nubi-wordmark" xmlns="http://www.w3.org/2000/svg" viewBox="12 -770 1943 822" aria-hidden="true" focusable="false"><g transform="scale(1 -1)"><g fill="currentColor"><path transform="translate(0 0)" d="M353 501Q402 501 433.0 484.5Q464 468 480.5 439.0Q497 410 502.5 373.5Q508 337 508 298V0H362V290Q362 332 347.0 345.5Q332 359 307 359Q286 359 263.5 350.5Q241 342 220.0 327.0Q199 312 183 293L157 367H198V0H52V489H160L190 392L140 396Q166 425 199.0 449.0Q232 473 271.0 487.0Q310 501 353 501Z"/><path transform="translate(561 0)" d="M217 -12Q163 -12 129.5 4.0Q96 20 77.5 48.5Q59 77 52.5 113.5Q46 150 46 191V489H192V199Q192 158 209.0 144.5Q226 131 251 131Q273 131 294.0 138.5Q315 146 335.0 160.5Q355 175 371 196L396 122H355V489H502V0H393L363 97L413 93Q389 65 357.5 40.5Q326 16 291.0 2.0Q256 -12 217 -12Z"/><path transform="translate(1123 0)" d="M323 -12Q259 -12 211.0 19.5Q163 51 136.5 108.5Q110 166 110 245Q110 328 136.0 385.0Q162 442 209.5 471.5Q257 501 322 501Q388 501 439.0 468.5Q490 436 519.0 378.0Q548 320 548 245Q548 170 519.5 111.5Q491 53 440.5 20.5Q390 -12 323 -12ZM52 0V681H198V353H189V125H198L161 0ZM295 125Q340 125 369.5 158.5Q399 192 399 245Q399 297 369.5 330.5Q340 364 295 364Q251 364 221.0 330.5Q191 297 191 245Q191 192 221.0 158.5Q251 125 295 125Z"/><path transform="translate(1702 0)" d="M200 0H54V489H200Z"/></g><circle cx="1829" cy="644" r="86" style="fill:var(--nb-lobe)"/></g></svg>
   </a>
   <nav class="nav" aria-label="Principal">
     <a href="#/" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg><span>Explorar</span></a>
@@ -50,6 +48,7 @@
       </form>
       <div class="chips" id="chips" role="group" aria-label="Filtros"></div>
     </div>
+    <div class="hero-mascot" id="hero-mascot" aria-hidden="true"></div>
   </section>
 
   <div class="viewtoggle" role="group" aria-label="Ver como">
@@ -62,6 +61,7 @@
       <p class="count" id="count" aria-live="polite"></p>
       <ul class="list" id="list"></ul>
       <div class="empty" id="empty" hidden>
+        <div class="empty-mascot" id="empty-mascot" aria-hidden="true"></div>
         <p class="empty-title">Sin resultados</p>
         <p id="empty-text"></p>
       </div>
@@ -209,15 +209,15 @@
   </form>
 </section>
 
-<script src="js/config.js?v=6"></script>
-<script src="js/data.js?v=6"></script>
-<script src="js/map.js?v=6"></script>
-<script src="js/search.js?v=6"></script>
-<script src="js/mascot.js?v=6"></script>
-<script src="js/profiles.js?v=6"></script>
-<script src="js/editor.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
-<script src="js/assistant.js?v=6"></script>
+<script src="js/config.js?v=7"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/map.js?v=7"></script>
+<script src="js/search.js?v=7"></script>
+<script src="js/brand.js?v=7"></script>
+<script src="js/profiles.js?v=7"></script>
+<script src="js/editor.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
+<script src="js/assistant.js?v=7"></script>
 <script>/* PWA: registra el service worker si el navegador lo admite (solo https o localhost) */if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>
