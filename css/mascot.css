@@ -1,8 +1,14 @@
 /* Mascota "Encaje" (provisional). Colores = variables --mc-*; claro por defecto, oscuro con el tema o con .on-dark.
    Nada se mueve de forma permanente: cada animación es de un solo disparo y se apaga con prefers-reduced-motion. */
-.mascot-svg { --mc-body: #F4B63F; --mc-ink: #16302B; --mc-hi: #FFFFFF; --mc-dot: #1E8F63; --mc-shadow: rgba(22,48,43,.14); --mc-alt: #7DB2F5; --mc-alt2: #4FBF9C; --mc-alt-ink: #0F2A4A; }
-:root[data-theme="dark"] .mascot-svg, .mascot-svg.on-dark { --mc-body: #FFD47A; --mc-ink: #0F1A22; --mc-dot: #8FD6B5; --mc-shadow: rgba(255,212,122,.20); }
+.mascot-svg { --mc-body: #FFD2B0; --mc-shade: #F7B98F; --mc-line: #B4582A; --mc-cheek: #EE8A8A; --mc-ink: #16302B; --mc-hi: #FFFFFF; --mc-dot: #F2A33A; --mc-shadow: rgba(22,48,43,.14); --mc-alt: #7DB2F5; --mc-alt2: #4FBF9C; --mc-alt-ink: #0F2A4A; }
+/* En oscuro el durazno ya contrasta solo: el contorno se funde con el cuerpo para verse más suave. */
+:root[data-theme="dark"] .mascot-svg, .mascot-svg.on-dark { --mc-line: #FFD2B0; --mc-shadow: rgba(255,210,176,.18); }
 .m-shape { fill: var(--mc-body); }
+.m-line { fill: var(--mc-line); stroke: var(--mc-line); stroke-width: 7; stroke-linejoin: round; }
+.m-shade { fill: var(--mc-shade); }
+.m-cheeks { fill: var(--mc-cheek); }
+.m-dot { stroke: var(--mc-line); stroke-width: 2.5; stroke-linejoin: round; }
+.m-dotg .m-hi { opacity: .85; }
 .m-ink, .m-fill { fill: var(--mc-ink); }
 .m-hi { fill: var(--mc-hi); }
 .m-dot { fill: var(--mc-dot); }

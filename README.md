@@ -1,4 +1,4 @@
-# Cerca (nombre provisional) · versión de prueba
+# Nubi · versión de prueba
 
 Versión pública de **prueba** de una plataforma para descubrir negocios locales en Roldanillo, Valle del Cauca (Colombia).
 

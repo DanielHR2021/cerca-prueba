@@ -1,6 +1,6 @@
 {
-  "name": "Cerca (provisional) · Prueba con datos ficticios",
-  "short_name": "Cerca prueba",
+  "name": "Nubi · Versión de prueba con datos ficticios",
+  "short_name": "Nubi",
   "description": "Versión de prueba para descubrir negocios locales. Los negocios mostrados son datos ficticios de demostración.",
   "lang": "es-CO",
   "start_url": "./",

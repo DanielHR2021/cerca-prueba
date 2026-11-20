@@ -1,6 +1,6 @@
 /* Configuración del prototipo. Todo lo que cambia entre proveedores o entornos vive aquí. */
 window.CERCA_CONFIG = {
-  appName: 'Cerca', // nombre PROVISIONAL, no es una decisión
+  appName: 'Nubi', // nombre de la app (decidido por el fundador, 2026-11-20)
   timezone: 'America/Bogota',
   // Municipio activo. El MVP solo tiene Roldanillo, pero la interfaz lee todo de esta tabla.
   municipio: 'roldanillo',

@@ -1,4 +1,4 @@
-/* Ayudante contextual con la mascota Encaje. Lógica 100 % local: reglas, preguntas frecuentes y la
+/* Ayudante contextual con la mascota Nubi. Lógica 100 % local: reglas, preguntas frecuentes y la
    misma búsqueda tolerante de la app. No usa servicios externos ni inteligencia artificial.
    Cada acción llama a una función real de Cerca.app; no ofrece nada que no exista. */
 (function () {
@@ -146,7 +146,7 @@
     } else if (v === 'settings') {
       bot('Aquí puedes cambiar el tema, revisar tus guardados o instalar la app.', { acts: [act('¿Cómo la instalo?', function () { answer(faqBy('instalar')); }), act('Cambiar tema', themeAct)] });
     } else {
-      bot(store('cerca.assist.used') ? '¿Qué necesitas encontrar?' : 'Hola, soy tu ayudante. Te ayudo a encontrar negocios en ' + esc(PLACE) + ' y a usar la app. Elige una opción o escribe abajo.');
+      bot(store('cerca.assist.used') ? '¿Qué necesitas encontrar?' : 'Hola, soy Nubi. Te ayudo a encontrar negocios en ' + esc(PLACE) + ' y a usar la app. Elige una opción o escribe abajo.');
     }
   }
 
@@ -184,7 +184,7 @@
     setTimeout(function () {
       if (!panel.hidden) { return; }
       mood('welcome', 2200);
-      bubble.textContent = 'Hola. Tócame si necesitas ayuda para buscar o usar el mapa.';
+      bubble.textContent = 'Hola, soy Nubi. Tócame si necesitas ayuda para buscar o usar el mapa.';
       bubble.hidden = false; bubbleTimer = setTimeout(hideBubble, 6000);
     }, 1200);
   }

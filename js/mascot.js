@@ -1,5 +1,5 @@
-/* Mascota provisional, concepto "Encaje": un cuadrado suave al que le falta una esquina y un punto pequeño
-   que encaja en ese hueco. Personaje original, abstracto, no animal. Un solo SVG con estados (data-mood);
+/* Mascota Nubi: una nube tierna (durazno con contorno suave) con una gotita que marca el lugar.
+   Personaje original, no animal. Reemplaza al concepto anterior «Encaje». Un solo SVG con estados (data-mood);
    las animaciones son CSS de un solo disparo (css/mascot.css).
    Estados: neutral, happy, curious (search), surprised, thinking, empty, celebrate;
    alias de la aplicación: welcome y help (= happy), discover (= happy con salto). */
@@ -37,16 +37,19 @@
       '<ellipse class="m-shadow" cx="60" cy="114" rx="30" ry="4"/>' + inner + '</svg>';
   };
 
-  /* Concepto elegido: Encaje. uid evita ids duplicados si hay varias mascotas en la página. */
+  /* Nubi (elegida por el fundador, 2026-11-20): nube durazno con contorno suave y una gotita ámbar
+     que hace de pin de ubicación (m-dotg: la animan los estados). Cara compartida con mejillas. */
+  var NUBE = '<circle cx="60" cy="54" r="27"/><circle cx="37" cy="64" r="19"/><circle cx="84" cy="62" r="20"/><circle cx="46" cy="44" r="15"/><rect x="20" y="58" width="82" height="30" rx="15"/>';
   Cerca.mascotSvg = function (uid, opts) {
-    var mask = 'encaje-mask-' + uid;
     return Cerca.mascotWrap(
       '<g class="m-body">' +
-        '<rect class="m-shape" x="14" y="22" width="92" height="88" rx="30" mask="url(#' + mask + ')"/>' +
-        Cerca.mascotFace(55, 68) +
-        '<g class="m-dotg"><circle class="m-dot" cx="95" cy="29" r="9"/></g>' +
+        '<g transform="translate(0 12)"><g class="m-line">' + NUBE + '</g><g class="m-shape">' + NUBE + '</g>' +
+        '<path class="m-shade" d="M24 80q36 12 74 0v1a15 15 0 0 1-11 7H35a15 15 0 0 1-11-7z"/></g>' +
+        '<g class="m-cheeks"><ellipse cx="39" cy="81" rx="5.5" ry="3.2"/><ellipse cx="81" cy="81" rx="5.5" ry="3.2"/></g>' +
+        Cerca.mascotFace(60, 76) +
+        '<g class="m-dotg"><path class="m-dot" d="M99 88s-9 10-9 16a9 9 0 0 0 18 0c0-6-9-16-9-16z"/><circle class="m-hi" cx="96.4" cy="103" r="2.2"/></g>' +
       '</g>',
-      'Ayudante de la plataforma', Object.assign({ defs: '<mask id="' + mask + '"><rect width="120" height="120" fill="#fff"/><circle cx="101" cy="23" r="21" fill="#000"/></mask>' }, opts));
+      'Nubi', opts);
   };
 
   var HIDE_KEY = 'cerca.helper.hidden', SEEN_KEY = 'cerca.welcome.seen';

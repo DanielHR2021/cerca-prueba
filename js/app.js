@@ -178,7 +178,7 @@
     Object.keys(VIEWS).forEach(function (v) { $('#view-' + v).hidden = v !== state.view; });
     var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view;
     $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === navKey) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); } });
-    document.title = (b ? b.name : VIEWS[state.view]) + ' · ' + C.appName + ' (provisional)';
+    document.title = (b ? b.name : VIEWS[state.view]) + ' · ' + C.appName;
     if (state.view === 'profile') { renderProfile(b); }
     if (state.view === 'saved') { renderSaved(); }
     if (state.view === 'owner' && Cerca.editor) { Cerca.editor.refresh(); }
