@@ -55,6 +55,8 @@
     var B = o.config.mapBounds, pins = new Map();
     o.container.innerHTML = SVG_BG + '<div class="pins"></div>';
     var layer = o.container.querySelector('.pins');
+    // Mismo ajuste en el esquema de respaldo: tocar el fondo (no un marcador) cierra la ficha.
+    o.container.onclick = function (e) { if (!e.target.closest('.pin') && o.onBackgroundClick) { o.onBackgroundClick(); } };
     o.businesses.forEach(function (b) {
       var el = makePin(b, o.onSelect, false);
       el.style.left = ((b.lng - B.west) / (B.east - B.west) * 100) + '%';
@@ -76,7 +78,7 @@
       clearUser: function () { if (dot) { dot.remove(); dot = null; } },
       centerOnUser: function () {}, followUser: function () {}, center: function () { return null; },
       setRoute: function () { return false; }, clearRoute: function () {}, hasRoute: function () { return false; }, // el esquema no dibuja rutas
-      destroy: function () { o.container.innerHTML = ''; }
+      destroy: function () { o.container.onclick = null; o.container.innerHTML = ''; }
     };
   }
 
@@ -153,6 +155,13 @@
       if (map.getSource(RT)) { map.removeSource(RT); }
     }
     map.on('style.load', drawRoute);
+    /* Ajuste UX Fase 3: tocar una zona vacía del mapa cierra la ficha. El 'click' de MapLibre ya descarta los
+       arrastres (tolerancia de 3 px) y no se emite al pellizcar ni con la rueda; los marcadores detienen su clic
+       (stopPropagation) y los controles están fuera del lienzo. El doble toque (acercar) emite un clic antes de
+       'dblclick': por eso se espera 260 ms y se cancela si llega el doble toque. */
+    var bgTimer = null;
+    map.on('click', function () { if (!o.onBackgroundClick) { return; } clearTimeout(bgTimer); bgTimer = setTimeout(o.onBackgroundClick, 260); });
+    map.on('dblclick', function () { clearTimeout(bgTimer); });
     /* Movimiento manual (arrastrar, pellizcar, rueda o botones +/−): MapLibre incluye originalEvent solo en esos casos. */
     ['dragstart', 'zoomstart'].forEach(function (ev) { map.on(ev, function (e) { if (e && e.originalEvent && o.onManualMove) { o.onManualMove(); } }); });
     var anim = null;

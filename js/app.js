@@ -122,8 +122,10 @@
   }
   function render() {
     var items = filtered();
-    if (state.sel && items.map(function (b) { return b.id; }).indexOf(state.sel) === -1) { state.sel = null; }
-    if (state.route && state.route.id !== state.sel) { state.route = null; map.clearRoute(); }
+    // Si un filtro oculta el negocio seleccionado se deselecciona y su ruta se quita.
+    if (state.sel && items.map(function (b) { return b.id; }).indexOf(state.sel) === -1) { state.sel = null; if (state.route) { state.route = null; map.clearRoute(); } }
+    // Cerrar la ficha (sel = null) conserva la ruta: solo «Quitar ruta» o elegir otro negocio la quitan.
+    if (state.route && state.sel && state.route.id !== state.sel) { state.route = null; map.clearRoute(); }
     renderList(items); renderSelCard(items);
     var vis = new Set(items.map(function (b) { return b.id; }));
     var closed = new Set(DATA.filter(function (b) { return !isOpen(b); }).map(function (b) { return b.id; }));
@@ -229,6 +231,7 @@
   var map = Cerca.createMap({
     container: $('#map'), businesses: DATA, config: C, onSelect: function (id) { pick(id, true); },
     onManualMove: function () { onManualMove(); },
+    onBackgroundClick: function () { if (state.sel) { state.sel = null; render(); } }, // ajuste UX: tocar el fondo cierra la ficha
     onStatus: function (s, why) {
       statusEl.hidden = s === 'maplibre'; statusEl.textContent = STATUS_TEXT[s] || '';
       if (s === 'fallback' && why) { statusEl.title = why; }
