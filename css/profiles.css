@@ -172,10 +172,36 @@
 .ed-preview .pf { padding-top: 12px; }
 .draft-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; max-width: 1040px; margin: 12px auto 0; padding: 12px 16px; border-radius: 16px; background: var(--moved-bg); color: var(--moved-fg); font-weight: 500; }
 .draft-wrap { background: var(--bg); }
+/* Responsividad de «Negocio» (corrección 2026-11-20): los campos se ajustan al ancho disponible.
+   Causa del desborde: la columna «1fr» no podía ser más estrecha que el contenido mínimo de un destacado
+   (dos campos de texto con su ancho intrínseco en fila) y estiraba todo el formulario hasta ~540 px. */
+.ed-form input, .ed-form select, .ed-form textarea { width: 100%; max-width: 100%; min-width: 0; }
+.ed-form input[type="file"] { width: auto; }
+.ed-item { grid-template-columns: 64px minmax(0, 1fr); }
+/* al enfocar un campo con el teclado del celular, que no quede tapado por la barra de guardado ni la navegación */
+.ed-form input, .ed-form select, .ed-form textarea { scroll-margin: 96px 0 200px; }
+.ed-thumbs button::after { content: ''; position: absolute; inset: -8px; } /* área táctil ≥ 44 px sin cambiar el aspecto */
+.ed-toggle button { min-height: 44px; }
+/* textos del comerciante: una palabra o enlace muy largo se parte en vez de ensanchar la página */
+.pf, .ed-form, .ed-file { overflow-wrap: anywhere; }
+@media (max-width: 360px) { .pf-act { padding-left: 1px; padding-right: 1px; } }
 @media (max-width: 1024px) {
   .ed-toggle { display: flex; }
-  .editor { grid-template-columns: 1fr; }
+  .editor { grid-template-columns: minmax(0, 1fr); }
   .editor[data-pane="edit"] .ed-preview, .editor[data-pane="preview"] .ed-form { display: none; }
   .ed-preview { position: static; max-height: none; }
   .ed-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .ed-item-del { min-height: 44px; }
+}
+/* poca altura (teléfono en horizontal o teclado abierto): la barra de guardado deja de ser fija para no ocupar la pantalla */
+@media (max-height: 500px) { .ed-bar { position: static; } .ed-form input, .ed-form select, .ed-form textarea { scroll-margin: 16px 0 110px; } }
+@media (max-width: 480px) {
+  /* destacados: el icono pasa arriba y detalle/precio se apilan si no caben */
+  .ed-item { grid-template-columns: minmax(0, 1fr); }
+  .ed-item select { grid-row: auto; min-height: 44px; padding: 8px 12px; font-size: 16px; }
+  .ed-item .ed-row { flex-wrap: wrap; } .ed-item .ed-row > input { flex: 1 1 140px; }
+  .ed-item-del { grid-column: 1; }
+  .ed-form fieldset { padding: 16px 14px; }
+  .ed-bar { padding: 10px 12px; gap: 8px; } .ed-status { flex: 1 0 100%; font-size: 13px; }
+  .ed-bar .btn { flex: 1 1 0; min-width: 0; padding: 0 10px; line-height: 1.15; text-align: center; }
 }
