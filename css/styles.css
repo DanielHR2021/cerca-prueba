@@ -307,3 +307,17 @@ button, input, select { font: inherit; color: inherit; }
 .route-note a { color: var(--ink); font-weight: 600; }/* Con ruta activa la tarjeta se compacta para no tapar la línea */
 .selcard.has-route > p, .selcard.has-route > .card-meta { display: none; }
 .selcard.has-route { gap: 6px; padding: 14px 16px; }
+/* Entrega A: ficha minimizable durante la ruta (misma superficie, solo más pequeña) */
+.selcard.is-anim { overflow: hidden; }
+.selcard.has-route:not(.is-min) h3 { padding-right: 44px; }
+.selcard-toggle { position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); display: grid; place-items: center; }
+.selcard-toggle:hover { background: var(--hover); color: var(--ink); }
+.selcard.is-min { padding: 0; gap: 0; max-width: calc(100% - 76px); } /* deja libre la atribución del mapa (abajo a la derecha) */
+.selcard-min { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 60px; padding: 10px 10px 10px 16px; border: 0; border-radius: inherit; background: transparent; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.selcard-min:hover { background: var(--hover); }
+.selcard-min:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.selcard-min-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.selcard-min-name { font-family: var(--font-display); font-weight: 700; font-size: 17px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.selcard-min-route { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--muted); }
+.selcard-min-route svg { flex: none; color: var(--geo); }
+.selcard-chev { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--hover); display: grid; place-items: center; }

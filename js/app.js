@@ -26,7 +26,7 @@
   function hoursText(b) { return 'Hoy ' + fmtHour(b.hours.from) + ' a ' + fmtHour(b.hours.to); }
   function byId(id) { return DATA.filter(function (b) { return b.id === id; })[0]; }
 
-  var state = { cat: 'Todos', q: '', openOnly: false, sel: null, pane: 'list', approx: false, view: 'home' };
+  var state = { cat: 'Todos', q: '', openOnly: false, sel: null, pane: 'map', approx: false, view: 'home' };
 
   /* ---------- Guardados (solo en este dispositivo) ---------- */
   var SAVED_KEY = 'cerca.saved';
@@ -96,13 +96,30 @@
     el.count.textContent = items.length + (items.length === 1 ? ' negocio' : ' negocios') + (state.approx && items.length ? ', coincidencia aproximada' : '');
     el.empty.hidden = items.length > 0;
   }
+  var I_CHEV_UP = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>';
+  var I_CHEV_DOWN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  var I_WALK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M9 21l2-6 3 3v3M7 12l3-4 4 1 2 4M11 15l-1-5"/></svg>';
   function renderSelCard(items) {
+    var r = state.route;
     var b = state.sel && byId(state.sel);
     var visible = b && items.indexOf(b) !== -1;
+    // Entrega A: con una ruta activa y la ficha cerrada, la ficha del destino queda minimizada (nunca desaparece).
+    if (!visible && r) { b = byId(r.id); visible = !!b; }
+    var hasRoute = !!(visible && r && r.id === b.id);
+    var min = hasRoute && (r.min || state.sel !== r.id);
     el.selcard.hidden = !visible;
-    el.selcard.classList.toggle('has-route', !!(visible && state.route && state.route.id === b.id));
+    el.selcard.classList.toggle('has-route', hasRoute);
+    el.selcard.classList.toggle('is-min', min);
     if (!visible) { return; }
-    el.selcard.innerHTML = '<h3>' + esc(b.name) + '</h3><p class="muted">' + esc(b.category) + ', ' + hoursText(b).toLowerCase() + '</p><p>' + esc(b.blurb) + '</p>' +
+    if (min) {
+      el.selcard.innerHTML = '<button type="button" class="selcard-min" data-card-expand aria-expanded="false">' +
+        '<span class="selcard-min-txt"><span class="selcard-min-name">' + esc(b.name) + '</span>' +
+        '<span class="selcard-min-route">' + I_WALK + '<span>Ruta activa · ≈ ' + fmtDuration(r.durationS) + ', ' + Cerca.geo.fmtDistance(r.distanceM) + '<span class="sr-only"> a pie</span></span></span></span>' +
+        '<span class="selcard-chev">' + I_CHEV_UP + '</span><span class="sr-only">Mostrar la ficha completa</span></button>';
+      return;
+    }
+    el.selcard.innerHTML = (hasRoute ? '<button type="button" class="selcard-toggle" data-card-min aria-expanded="true" aria-label="Minimizar la ficha">' + I_CHEV_DOWN + '</button>' : '') +
+      '<h3>' + esc(b.name) + '</h3><p class="muted">' + esc(b.category) + ', ' + hoursText(b).toLowerCase() + '</p><p>' + esc(b.blurb) + '</p>' +
       '<div class="card-meta">' + statusHtml(b) + '</div><div class="selcard-actions"><a class="btn btn--accent" href="#/negocio/' + b.id + '">Ver perfil</a>' + saveBtn(b) + '</div>' + routeHtml(b);
   }
   /* Módulo 01, Fase 3: ruta a pie. Distancia y duración vienen del servicio de rutas; nunca se calculan aquí. */
@@ -231,7 +248,7 @@
   var map = Cerca.createMap({
     container: $('#map'), businesses: DATA, config: C, onSelect: function (id) { pick(id, true); },
     onManualMove: function () { onManualMove(); },
-    onBackgroundClick: function () { if (state.sel) { state.sel = null; render(); } }, // ajuste UX: tocar el fondo cierra la ficha
+    onBackgroundClick: function () { if (state.sel) { cancelAutoMin(); state.sel = null; animateCard(render); } }, // ajuste UX: tocar el fondo cierra la ficha (con ruta activa queda minimizada)
     onStatus: function (s, why) {
       statusEl.hidden = s === 'maplibre'; statusEl.textContent = STATUS_TEXT[s] || '';
       if (s === 'fallback' && why) { statusEl.title = why; }
@@ -346,9 +363,46 @@
   })();
 
   /* ---------- Módulo 01, Fase 3: ruta a pie hacia el negocio seleccionado ---------- */
-  function clearRoute() { if (state.route) { state.route = null; map.clearRoute(); renderSelCard(filtered()); } }
+  function clearRoute() { cancelAutoMin(); if (state.route) { state.route = null; map.clearRoute(); renderSelCard(filtered()); } }
+
+  /* Entrega A: ficha minimizable durante la ruta. Minimizar = reducir la ficha, nunca ocultarla. */
+  var AUTO_MIN_MS = 2500, minTimer = null;
+  function cancelAutoMin() { clearTimeout(minTimer); minTimer = null; }
+  function scheduleAutoMin(id) {
+    cancelAutoMin();
+    minTimer = setTimeout(function () {
+      minTimer = null;
+      var r = state.route; // solo si sigue siendo la misma ruta, abierta y sin que el usuario la haya expandido
+      if (r && r.id === id && state.sel === id && !r.min && !r.autoOff) { setCardMin(true); }
+    }, AUTO_MIN_MS);
+  }
+  function animateCard(fn) {
+    var card = el.selcard;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || card.hidden || !card.animate) { fn(); return; }
+    var h0 = card.offsetHeight; fn();
+    if (card.hidden) { return; }
+    var h1 = card.offsetHeight; if (h0 === h1) { return; }
+    card.classList.add('is-anim');
+    var a = card.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    Array.prototype.forEach.call(card.children, function (c) { c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, delay: 80, fill: 'backwards' }); });
+    a.onfinish = a.oncancel = function () { card.classList.remove('is-anim'); };
+  }
+  function setCardMin(min) {
+    var r = state.route; if (!r) { return; }
+    cancelAutoMin();
+    var hadFocus = el.selcard.contains(document.activeElement);
+    if (!min) { r.autoOff = true; state.sel = r.id; } // expandida por el usuario: no se vuelve a minimizar sola en esta ruta
+    r.min = min;
+    animateCard(render);
+    if (hadFocus) { var f = el.selcard.querySelector(min ? '[data-card-expand]' : '[data-card-min]'); if (f) { f.focus(); } }
+  }
+  // Tocar o usar el teclado en la ficha durante la espera cancela la minimización automática.
+  ['pointerdown', 'keydown'].forEach(function (t) { $('#selcard').addEventListener(t, cancelAutoMin); });
+
   function requestRoute(id) {
     var b = byId(id); if (!b || state.routing) { return; }
+    cancelAutoMin();
     state.routing = id; renderSelCard(filtered());
     geoCtl.ensureLocation().then(function (u) {
       return Cerca.routing.route(u, { lat: b.lat, lng: b.lng }).then(function (r) {
@@ -358,12 +412,15 @@
         state.routing = null; renderSelCard(filtered()); // tarjeta compacta antes de encuadrar
         map.setRoute(r.coords, { bottom: el.selcard.offsetHeight + 24 });
         geoCtl.hide();
+        scheduleAutoMin(id); // solo tras una ruta válida y dibujada
       }, function (err) { geoCtl.show(err.message, { error: true, acts: err.code === 'timeout' || err.code === 'rate' || err.code === 'unavailable' || err.code === 'offline' ? [['Intentar de nuevo', function () { geoCtl.hide(); requestRoute(id); }]] : [] }); });
     }, function () { /* el mensaje de ubicación ya se mostró */ }).then(function () { state.routing = null; renderSelCard(filtered()); });
   }
   document.addEventListener('click', function (e) {
     var r = e.target.closest('[data-route]'); if (r) { requestRoute(+r.dataset.route); return; }
-    if (e.target.closest('[data-route-clear]')) { clearRoute(); }
+    if (e.target.closest('[data-route-clear]')) { clearRoute(); return; }
+    if (e.target.closest('[data-card-expand]')) { setCardMin(false); return; }
+    if (e.target.closest('[data-card-min]')) { setCardMin(true); }
   });
 
   /* Tema claro (dirección A) y oscuro (dirección C); la preferencia se recuerda. */
@@ -418,6 +475,8 @@
   Cerca.app = {
     profileHelpers: profileHelpers,
     mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy(), user: map.user(), center: map.center(), tracking: geoCtl.tracking(), routeLayer: map.hasRoute(), route: state.route }; }, // solo para pruebas
+    cardState: function () { return { visible: !el.selcard.hidden, min: el.selcard.classList.contains('is-min'), timer: !!minTimer, sel: state.sel }; }, // solo para pruebas
+    setAutoMinMs: function (ms) { var p = AUTO_MIN_MS; AUTO_MIN_MS = ms; return p; }, // solo para pruebas (acortar la espera)
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
     view: function () { return state.view; }, profile: function () { return state.profile; },
     search: function (q) { state.q = q; state.cat = 'Todos'; state.openOnly = false; state.pane = 'list'; el.input.value = q; renderChips(); go('#/'); return afterFilterChange(); },
