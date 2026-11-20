@@ -1,9 +1,9 @@
 /* Service worker mínimo de la PWA de prueba.
    Red primero para los archivos propios (siempre la versión publicada más reciente);
    la copia en caché solo se usa sin conexión. El mapa, las teselas y las fuentes externas no se guardan. */
-var CACHE = 'cerca-v4';
-var SHELL = ['./', 'index.html', 'css/styles.css', 'css/mascot.css', 'css/profiles.css', 'js/config.js', 'js/data.js', 'js/map.js', 'js/search.js', 'js/mascot.js',
-  'js/profiles.js', 'js/editor.js', 'js/app.js', 'js/assistant.js', 'manifest.webmanifest', 'icons/icon-192.png'];
+var CACHE = 'cerca-v5';
+var SHELL = ['./', 'index.html', 'css/styles.css?v=5', 'css/mascot.css?v=5', 'css/profiles.css?v=5', 'js/config.js?v=5', 'js/data.js?v=5', 'js/map.js?v=5', 'js/search.js?v=5', 'js/mascot.js?v=5',
+  'js/profiles.js?v=5', 'js/editor.js?v=5', 'js/app.js?v=5', 'js/assistant.js?v=5', 'manifest.webmanifest', 'icons/icon-192.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
