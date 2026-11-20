@@ -217,6 +217,51 @@
   $('#map-home').setAttribute('aria-label', 'Volver a ' + C.municipioNombre);
   $('#map-home').addEventListener('click', function () { map.home(); });
 
+  /* ---------- Módulo 01: Mi ubicación ----------
+     El permiso se pide solo al pulsar el botón. Las coordenadas quedan en memoria: no se guardan ni se envían. */
+  (function () {
+    var btn = $('#map-locate'), lbl = $('#map-locate-lbl'), box = $('#geo-msg'), txt = $('#geo-msg-text'), acts = $('#geo-msg-acts');
+    var busy = false, here = null, hideTimer = null, center = { lat: C.mapCenter[1], lng: C.mapCenter[0] };
+    function hide() { box.hidden = true; clearTimeout(hideTimer); }
+    function show(text, opts) {
+      opts = opts || {};
+      txt.textContent = text; acts.innerHTML = '';
+      (opts.acts || []).forEach(function (a) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'geo-act'; b.textContent = a[0];
+        b.addEventListener('click', a[1]); acts.appendChild(b);
+      });
+      box.classList.toggle('is-error', !!opts.error); box.hidden = false;
+      clearTimeout(hideTimer); if (opts.autoHide) { hideTimer = setTimeout(hide, opts.autoHide); }
+    }
+    function setBusy(b) {
+      busy = b; btn.setAttribute('aria-busy', b ? 'true' : 'false');
+      lbl.textContent = b ? 'Buscando…' : (here ? 'Actualizar ubicación' : 'Mi ubicación');
+    }
+    function clearUser() { here = null; map.clearUser(); btn.classList.remove('is-on'); setBusy(false); show('Quitamos tu ubicación del mapa.', { autoHide: 3000 }); }
+    function locate() {
+      if (busy) { return; }
+      setBusy(true); show('Buscando tu ubicación…');
+      Cerca.geo.locate().then(function (u) {
+        here = u; btn.classList.add('is-on'); setBusy(false);
+        var shown = map.setUser(u), far = Cerca.geo.distanceM(u, center), parts = [], list = [['Quitar mi ubicación', clearUser]];
+        parts.push(!shown ? 'Te encontramos, pero el esquema de respaldo no puede mostrar puntos fuera de su zona.'
+          : u.accuracy != null ? 'Te encontramos (precisión ± ' + Cerca.geo.fmtDistance(u.accuracy) + ').' : 'Te encontramos.');
+        if (u.accuracy != null && u.accuracy > 500) { parts.push('Es una ubicación aproximada: activa la ubicación precisa del celular para mejorarla.'); }
+        if (far > 15000) {
+          parts.push('Estás a ' + Cerca.geo.fmtDistance(far) + ' de ' + C.municipioNombre + ', donde están los negocios.');
+          list.unshift(['Volver a ' + C.municipioNombre, function () { map.home(); hide(); }]);
+        }
+        if (shown) { map.centerOnUser(); }
+        show(parts.join(' '), { acts: list });
+      }, function (err) {
+        setBusy(false);
+        show(err.message, { error: true, acts: (err.code === 'timeout' || err.code === 'unavailable') ? [['Intentar de nuevo', locate]] : [] });
+      });
+    }
+    btn.addEventListener('click', locate);
+    $('#geo-msg-close').addEventListener('click', hide);
+  })();
+
   /* Tema claro (dirección A) y oscuro (dirección C); la preferencia se recuerda. */
   function theme() { return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
   function paintTheme() {
@@ -268,6 +313,7 @@
   /* API para el asistente y el editor: solo funciones que existen en la interfaz. */
   Cerca.app = {
     profileHelpers: profileHelpers,
+    mapState: function () { return { real: map.isReal(), accuracyLayer: map.hasAccuracy() }; }, // solo para pruebas
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
     view: function () { return state.view; }, profile: function () { return state.profile; },
     search: function (q) { state.q = q; state.cat = 'Todos'; state.openOnly = false; state.pane = 'list'; el.input.value = q; renderChips(); go('#/'); return afterFilterChange(); },

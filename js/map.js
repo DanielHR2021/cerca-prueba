@@ -19,6 +19,20 @@
     el.addEventListener('click', function (e) { e.stopPropagation(); onSelect(b.id); });
     return el;
   }
+  /* Marcador de «tu ubicación» (Módulo 01): un punto con borde blanco; no es interactivo. */
+  function makeUserDot() {
+    var el = document.createElement('div');
+    el.className = 'user-dot';
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', 'Tu ubicación');
+    return el;
+  }
+  /* Polígono circular aproximado (64 lados) de radio r metros alrededor de lng/lat. */
+  function circle(lng, lat, r) {
+    var pts = [], dLat = r / 111320, dLng = r / (111320 * Math.cos(lat * Math.PI / 180));
+    for (var i = 0; i <= 64; i++) { var a = i / 64 * 2 * Math.PI; pts.push([lng + dLng * Math.cos(a), lat + dLat * Math.sin(a)]); }
+    return pts;
+  }
   function apply(pins, state) {
     pins.forEach(function (p, id) {
       p.el.hidden = !state.visible.has(id);
@@ -47,8 +61,20 @@
       el.style.top = ((B.north - b.lat) / (B.north - B.south) * 100) + '%';
       layer.appendChild(el); pins.set(b.id, { el: el });
     });
+    var dot = null;
     return {
       update: function (s) { apply(pins, s); }, select: function () {}, home: function () {}, resize: function () {}, setTheme: function () {},
+      /* En el esquema solo se puede situar el punto si cae dentro de los límites dibujados. */
+      setUser: function (u) {
+        var inside = u.lng >= B.west && u.lng <= B.east && u.lat >= B.south && u.lat <= B.north;
+        if (!inside) { if (dot) { dot.remove(); dot = null; } return false; }
+        if (!dot) { dot = makeUserDot(); dot.classList.add('user-dot--svg'); layer.appendChild(dot); }
+        dot.style.left = ((u.lng - B.west) / (B.east - B.west) * 100) + '%';
+        dot.style.top = ((B.north - u.lat) / (B.north - B.south) * 100) + '%';
+        return true;
+      },
+      clearUser: function () { if (dot) { dot.remove(); dot = null; } },
+      centerOnUser: function () {},
       destroy: function () { o.container.innerHTML = ''; }
     };
   }
@@ -88,12 +114,53 @@
       el.setAttribute('aria-label', b.name); /* MapLibre lo sobrescribe con «Map marker» al añadirlo */
       pins.set(b.id, { el: el });
     });
+    /* ---- Tu ubicación: marcador HTML (se mueve con setLngLat, sin reconstruir) + círculo de precisión ---- */
+    /* styleReady: el estilo terminó de cargar. No se usa map.isStyleLoaded(), que devuelve false
+       mientras se descargan teselas (justo después de mover el mapa o cambiar de tema). */
+    var user = null, userMarker = null, ACC = 'nubi-user-acc', styleReady = false;
+    map.on('style.load', function () { styleReady = true; });
+    function accColor() { return getComputedStyle(document.documentElement).getPropertyValue('--geo').trim() || '#1C6790'; }
+    function drawAccuracy() {
+      if (!user || !styleReady) { return; }
+      var data = { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [circle(user.lng, user.lat, Math.max(user.accuracy || 0, 5))] } };
+      var src = map.getSource(ACC);
+      if (src) { src.setData(data); return; }
+      map.addSource(ACC, { type: 'geojson', data: data });
+      map.addLayer({ id: ACC + '-fill', type: 'fill', source: ACC, paint: { 'fill-color': accColor(), 'fill-opacity': 0.14 } });
+      map.addLayer({ id: ACC + '-line', type: 'line', source: ACC, paint: { 'line-color': accColor(), 'line-width': 1.5, 'line-opacity': 0.55 } });
+    }
+    function removeAccuracy() {
+      [ACC + '-line', ACC + '-fill'].forEach(function (id) { if (map.getLayer(id)) { map.removeLayer(id); } });
+      if (map.getSource(ACC)) { map.removeSource(ACC); }
+    }
+    map.on('style.load', drawAccuracy); // setStyle (cambio de tema) borra las capas propias: se vuelven a añadir
     return {
+      setUser: function (u) {
+        user = u;
+        if (!userMarker) { userMarker = new ML.Marker({ element: makeUserDot(), anchor: 'center' }).setLngLat([u.lng, u.lat]).addTo(map); }
+        else { userMarker.setLngLat([u.lng, u.lat]); }
+        drawAccuracy();
+        return true;
+      },
+      clearUser: function () { user = null; if (userMarker) { userMarker.remove(); userMarker = null; } if (styleReady) { removeAccuracy(); } },
+      hasAccuracy: function () { return !!map.getLayer(ACC + '-fill'); },
+      centerOnUser: function () {
+        if (!user) { return; }
+        var acc = user.accuracy || 50;
+        if (acc > 300) {   // precisión pobre: encuadrar el círculo entero en vez de acercar demasiado
+          var d = acc / 111320, e = acc / (111320 * Math.cos(user.lat * Math.PI / 180));
+          map.fitBounds([[user.lng - e, user.lat - d], [user.lng + e, user.lat + d]], { padding: 40, maxZoom: 16, duration: reduce ? 0 : 700 });
+        } else {
+          map.easeTo({ center: [user.lng, user.lat], zoom: Math.max(map.getZoom(), 16.5), duration: reduce ? 0 : 700 });
+        }
+      },
       update: function (s) { apply(pins, s); },
       select: function (id) { var b = byId[id]; if (b) { map.easeTo({ center: [b.lng, b.lat], duration: reduce ? 0 : 500 }); } },
       home: function () { map.easeTo({ center: c.mapCenter, zoom: c.mapZoom, duration: reduce ? 0 : 600 }); },
       resize: function () { map.resize(); if (!done) { clearTimeout(timer); arm(); } /* plazo completo al mostrarse */ },
-      setTheme: function (t) { map.setStyle(styleFor(c, t)); },
+      /* diff:false fuerza una carga completa: con el modo «diff» (por defecto) MapLibre borra las capas propias
+         sin emitir 'style.load', y el círculo de precisión no se podría volver a dibujar. */
+      setTheme: function (t) { styleReady = false; map.setStyle(styleFor(c, t), { diff: false }); },
       destroy: function () { done = true; clearTimeout(timer); try { map.remove(); } catch (e) { /* ya liberado */ } }
     };
   }
@@ -117,7 +184,7 @@
   }
 
   Cerca.createMap = function (o) {
-    var impl, last = null, status = 'loading';
+    var impl, last = null, status = 'loading', lastUser = null;
     function setStatus(s, msg) { status = s; o.container.dataset.map = s; ctl.status = s; if (o.onStatus) { o.onStatus(s, msg || ''); } }
     var ctl = {
       update: function (s) { last = s; impl.update(s); },
@@ -125,12 +192,18 @@
       home: function () { impl.home(); },
       resize: function () { impl.resize(); },
       setTheme: function (t) { impl.setTheme(t); },
+      /* Tu ubicación (Módulo 01). setUser devuelve false si el motor actual no puede mostrarla. */
+      setUser: function (u) { lastUser = u; return impl.setUser(u); },
+      clearUser: function () { lastUser = null; impl.clearUser(); },
+      centerOnUser: function () { impl.centerOnUser(); },
+      hasAccuracy: function () { return impl.hasAccuracy ? impl.hasAccuracy() : false; }, // para pruebas
+      isReal: function () { return status === 'maplibre'; },
       status: status
     };
     function toFallback(err) {
       console.warn('[mapa] ' + err.message + '. Se muestra el esquema de respaldo (no es un mapa real).');
       try { impl.destroy(); } catch (e) { /* nada */ }
-      impl = svgImpl(o); if (last) { impl.update(last); }
+      impl = svgImpl(o); if (last) { impl.update(last); } if (lastUser) { impl.setUser(lastUser); }
       setStatus('fallback', err.message);
     }
     if (o.config.mapProvider !== 'maplibre') {
@@ -141,7 +214,7 @@
     loadMapLibre(o.config).then(function () {
       impl.destroy();
       impl = maplibreImpl(o, function () { setStatus('maplibre'); }, toFallback);
-      if (last) { impl.update(last); }
+      if (last) { impl.update(last); } if (lastUser) { impl.setUser(lastUser); }
     }).catch(toFallback);
     return ctl;
   };

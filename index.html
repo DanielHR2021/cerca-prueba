@@ -7,8 +7,8 @@
 <meta name="description" content="Prototipo de plataforma para descubrir negocios locales. Datos de demostración.">
 <script>/* aplica el tema antes de pintar para evitar un destello */(function(){var t;try{t=localStorage.getItem('cerca.theme')}catch(e){}if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t})();</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=7">
-<link rel="stylesheet" href="css/profiles.css?v=7">
+<link rel="stylesheet" href="css/styles.css?v=8">
+<link rel="stylesheet" href="css/profiles.css?v=8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16302B">
 <link rel="manifest" href="manifest.webmanifest">
@@ -69,7 +69,9 @@
     <section class="mapwrap" aria-label="Mapa de negocios">
       <div class="map" id="map" data-map="loading"></div>
       <button type="button" class="map-home" id="map-home" aria-label="Volver a Roldanillo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg><span id="map-home-label">Roldanillo</span></button>
+      <button type="button" class="map-locate" id="map-locate" aria-controls="geo-msg"><svg class="i-locate" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4 4.5 10.5l6.5 2.5 2.5 6.5z"/></svg><span id="map-locate-lbl">Mi ubicación</span></button>
       <p class="map-status" id="map-status" role="status" hidden></p>
+      <div class="geo-msg" id="geo-msg" role="status" aria-live="polite" hidden><p id="geo-msg-text"></p><div class="geo-msg-acts" id="geo-msg-acts"></div><button type="button" class="geo-msg-close" id="geo-msg-close" aria-label="Cerrar aviso"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <article class="selcard" id="selcard" hidden aria-live="polite"></article>
     </section>
   </main>
@@ -209,15 +211,16 @@
   </form>
 </section>
 
-<script src="js/config.js?v=7"></script>
-<script src="js/data.js?v=7"></script>
-<script src="js/map.js?v=7"></script>
-<script src="js/search.js?v=7"></script>
-<script src="js/brand.js?v=7"></script>
-<script src="js/profiles.js?v=7"></script>
-<script src="js/editor.js?v=7"></script>
-<script src="js/app.js?v=7"></script>
-<script src="js/assistant.js?v=7"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/data.js?v=8"></script>
+<script src="js/map.js?v=8"></script>
+<script src="js/geo.js?v=8"></script>
+<script src="js/search.js?v=8"></script>
+<script src="js/brand.js?v=8"></script>
+<script src="js/profiles.js?v=8"></script>
+<script src="js/editor.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/assistant.js?v=8"></script>
 <script>/* PWA: registra el service worker si el navegador lo admite (solo https o localhost) */if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>
