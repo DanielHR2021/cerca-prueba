@@ -127,6 +127,9 @@
     window.addEventListener('hashchange', abrir);
     if (Cerca.auth) { Cerca.auth.onChange(function (s) { if (s.status === 'signed_in' && st.admin === null) { esAdmin().then(enlaceAjustes); } else { if (s.status !== 'signed_in') { st.admin = null; } enlaceAjustes(); } if (location.hash === '#/admin') { abrir(); } }); }
     abrir();
+    // Si la sesión ya estaba iniciada antes de que este módulo arrancara, comprobar el permiso ahora.
+    var a0 = Cerca.auth && Cerca.auth.state();
+    if (a0 && a0.status === 'signed_in' && st.admin === null && location.hash !== '#/admin') { esAdmin().then(enlaceAjustes, function () {}); }
   }
   if (Cerca.app) { init(); } else { document.addEventListener('nubi:app-lista', init, { once: true }); }
   Cerca.moderacion = { estado: function () { return st; }, cargar: cargar, copia: copia, abrir: abrir };
