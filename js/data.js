@@ -1,8 +1,10 @@
-/* DATOS DE DEMOSTRACIÓN. Ningún negocio de este archivo es real (nombres, productos, precios, historias y contacto).
-   Mismo formato que tendrá la base de datos: se reemplaza esta fuente, no la interfaz.
+/* DATOS DE DEMOSTRACIÓN. Ningún negocio de este archivo es real (nombres, productos, precios, historias).
+   Los lee SOLO js/store.js (adaptador «demo») y ya tienen la forma única de negocio (ver store.js).
+   Sin contactos: ningún teléfono ni red se muestra como real. Los puntos del mapa son puntos de prueba.
+   El horario ficticio de cada negocio se aplica igual a los 7 días (no hay datos reales por día).
    Identidad del perfil: kind (tipo de negocio → familia visual en js/profiles.js), palette e icon. */
 (function () {
-  var B = window.CERCA_CONFIG.mapBounds;
+  var C = window.CERCA_CONFIG, B = C.mapBounds;
   // Convierte una posición en % del mapa esquemático a lat/lng (solo para la demo).
   function at(x, y) {
     return {
@@ -10,12 +12,18 @@
       lat: +(B.north - (y / 100) * (B.north - B.south)).toFixed(5)
     };
   }
+  function pad(h) { return (h < 10 ? '0' : '') + h + ':00'; }
+  function slugify(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
   function biz(o) {
-    var p = at(o.x, o.y);
-    o.lat = p.lat; o.lng = p.lng; delete o.x; delete o.y;
-    o.demo = true; o.municipio = window.CERCA_CONFIG.municipio;
-    o.address = null; o.phone = '(ficticio) 300 000 0000'; o.whatsapp = null; // contacto FICTICIO, claramente marcado
-    return o;
+    var p = at(o.x, o.y), slot = [{ from: pad(o.hours.from), to: pad(o.hours.to) }], slug = slugify(o.name);
+    var b = Object.assign({}, o, {
+      legacyId: o.id, uid: 'demo-' + slug, slug: slug, status: 'publicado', demo: true, municipio: C.municipio,
+      location: { mode: 'local', lat: p.lat, lng: p.lng, address: null, demoPoint: true },
+      hours: { mode: 'fijo', week: [slot, slot, slot, slot, slot, slot, slot], exceptions: [] },
+      contacts: [], delivery: null, payments: [], updatedAt: null
+    });
+    delete b.id; delete b.x; delete b.y;
+    return b;
   }
   window.CERCA_DEMO = [
     biz({ id: 1, name: 'Panadería Ejemplo', category: 'Comida', kind: 'panaderia', kindLabel: 'Panadería', palette: 'trigo', icon: 'bread', since: 1998,

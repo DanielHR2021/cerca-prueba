@@ -23,7 +23,19 @@ window.CERCA_CONFIG = {
   // MapLibre se carga desde un CDN al abrir la página (no hay npm en este entorno). Se prueban en orden.
   maplibreVersion: '4.7.1',
   maplibreCdns: ['https://unpkg.com/maplibre-gl@{v}/dist/', 'https://cdn.jsdelivr.net/npm/maplibre-gl@{v}/dist/'],
-  mapTimeoutMs: 12000
+  mapTimeoutMs: 12000,
+  // Fuente de los negocios para js/store.js: 'demo' | 'supabase' | 'mixto' (aprobados en Supabase + demostración;
+  // si el servidor falla o tarda más de 6 s, queda solo la demo). Para probar: ?datos=demo|supabase|mixto
+  dataSource: 'mixto',
+  // Supabase (Etapa 1, T5): PROYECTO DE PRUEBAS «nubi-pruebas». La clave «publishable» está hecha para el
+  // navegador: la protección real son las reglas por fila (RLS) de db/migraciones. La clave de servicio (privada) NUNCA va aquí.
+  supabase: {
+    url: 'https://swugmwjhtdauyetzisqj.supabase.co',
+    publishableKey: 'sb_publishable_V7uKdrtAmFjsBpOVOyYp2w_hHxyXHr1',
+    // Librería oficial con versión fija y huella de integridad (el navegador la rechaza si el CDN la altera).
+    lib: 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js',
+    libIntegrity: 'sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R'
+  }
 };
 (function () {
   var C = window.CERCA_CONFIG, m = C.municipios[C.municipio];

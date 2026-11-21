@@ -113,6 +113,7 @@
     return '<section class="pf-sec" aria-labelledby="pf-feat-h"><h2 id="pf-feat-h">' + esc(fam.feat) + '</h2>' + body + '</section>';
   }
 
+  var CONTACT_LABEL = { whatsapp: 'WhatsApp', telefono: 'Teléfono', correo: 'Correo', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', web: 'Web' };
   /* render(b, h): h = { statusHtml, hoursText, isSaved, place, dept, preview }. Devuelve HTML. */
   function render(b, h) {
     var famKey = familyOf(b), fam = FAMILIES[famKey], kind = KINDS[b.kind] || KINDS.tienda, preview = !!h.preview;
@@ -120,10 +121,14 @@
     var badge = b.logo ? '<img class="pf-logo" src="' + b.logo + '" alt="Logotipo de ' + esc(b.name) + '">' : '<span class="pf-logo pf-logo--icon">' + icon(b.icon || kind.icon, 30) + '</span>';
     var kindLine = esc(b.kindLabel || kind.label) + ' en ' + esc(h.place) + (b.since ? ', desde ' + b.since : '');
     var dis = function (why) { return ' aria-disabled="true" data-why="' + esc(why) + '"'; };
-    var contactWhy = preview ? 'En la vista previa los botones no hacen nada.' : 'Contacto ficticio: se activará cuando el comerciante registre sus datos reales.';
+    var contactWhy = preview ? 'En la vista previa los botones no hacen nada.' : b.demo ? 'Contacto ficticio: este negocio es de prueba.' : 'Este negocio no publicó este contacto.';
+    // Entrega B: enlaces directos solo con un contacto válido publicado; si no, el botón se ve inactivo y lo explica.
+    var S = Cerca.store, cOf = function (k) { var c = (b.contacts || []).filter(function (x) { return x.kind === k; })[0]; return c && S ? S.contactHref(k, c.value) : null; };
+    var tel = preview ? null : cOf('telefono') || (cOf('whatsapp') ? 'tel:' + (b.contacts.filter(function (x) { return x.kind === 'whatsapp'; })[0].value) : null), wa = preview ? null : cOf('whatsapp');
+    var link = function (href, act, ic, label, ext) { return '<a class="pf-act" data-pf-act="' + act + '" href="' + esc(href) + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' + icon(ic, 22) + '<span>' + label + '</span></a>'; };
     var actions =
-      '<button type="button" class="pf-act" data-pf-act="call"' + dis(contactWhy) + '>' + icon('call', 22) + '<span>Llamar</span></button>' +
-      '<button type="button" class="pf-act" data-pf-act="chat"' + dis(contactWhy) + '>' + icon('chat', 22) + '<span>WhatsApp</span></button>' +
+      (tel ? link(tel, 'call', 'call', 'Llamar') : '<button type="button" class="pf-act" data-pf-act="call"' + dis(contactWhy) + '>' + icon('call', 22) + '<span>Llamar</span></button>') +
+      (wa ? link(wa, 'chat', 'chat', 'WhatsApp', true) : '<button type="button" class="pf-act" data-pf-act="chat"' + dis(contactWhy) + '>' + icon('chat', 22) + '<span>WhatsApp</span></button>') +
       '<button type="button" class="pf-act pf-act--main" data-pf-act="map"' + (preview ? dis('En la vista previa los botones no hacen nada.') : '') + '>' + icon('pin', 22) + '<span>Cómo llegar</span></button>' +
       '<button type="button" class="pf-act" data-pf-act="share"' + (preview ? dis('En la vista previa los botones no hacen nada.') : '') + '>' + icon('share', 22) + '<span>Compartir</span></button>' +
       (preview ? '<button type="button" class="pf-act"' + dis('En la vista previa los botones no hacen nada.') + '>' + icon('save', 22) + '<span>Guardar</span></button>'
@@ -145,8 +150,14 @@
       gallery +
       '<section class="pf-sec pf-info" aria-labelledby="pf-info-h"><h2 id="pf-info-h">Cuándo y dónde</h2><dl>' +
         '<dt>Horario</dt><dd>' + esc(h.hoursText(b)) + '</dd><dt>Zona</dt><dd>' + esc(h.place) + ', ' + esc(h.dept) + '</dd>' +
-        '<dt>Dirección</dt><dd class="placeholder">' + (preview ? '[La añadirás al registrarte]' : '[Dirección de ejemplo, no es real]') + '</dd>' +
-        (preview ? '' : '<dt>Teléfono</dt><dd class="placeholder">' + esc(b.phone) + '</dd>') + '</dl>' +
+        '<dt>Dirección</dt>' + (b.location && b.location.address ? '<dd>' + esc(b.location.address) + '</dd>'
+          : '<dd class="placeholder">' + (preview ? '[La añadirás al registrarte]' : b.location && b.location.mode === 'zona' ? 'Atiende en una zona, sin dirección pública' : 'Sin dirección publicada') + '</dd>') +
+        // Solo contactos publicados; nunca un teléfono de relleno como si fuera real.
+        '<dt>Contacto</dt>' + ((b.contacts || []).length ? '<dd class="pf-contacts">' + b.contacts.map(function (c) {
+            var href = Cerca.store ? Cerca.store.contactHref(c.kind, c.value) : null, lbl = CONTACT_LABEL[c.kind] || c.kind, shown = c.kind === 'web' ? c.value.replace(/^https:\/\//, '') : /^(instagram|tiktok)$/.test(c.kind) ? '@' + c.value : c.value;
+            return href && !preview ? '<a href="' + esc(href) + '"' + (/^https/.test(href) ? ' target="_blank" rel="noopener"' : '') + '>' + esc(lbl) + ': ' + esc(shown) + '</a>' : '<span>' + esc(lbl) + ': ' + esc(shown) + '</span>';
+          }).join('') + '</dd>' : '<dd class="placeholder">Sin contacto publicado</dd>') + '</dl>' +
+        (b.delivery || (b.payments || []).length ? '<p class="pf-extra">' + (b.delivery ? 'Hace domicilios. ' : '') + ((b.payments || []).length ? 'Pagos: ' + esc(b.payments.join(', ')) + ' (informativo).' : '') + '</p>' : '') +
         (b.demo ? '<p class="demo-note"><strong>Datos de prueba.</strong> Este negocio, sus productos, precios e historia son ficticios.</p>' : '') + '</section>' +
       '</div></div>';
     // La vista previa convive en el DOM con el perfil: ids distintos para no duplicarlos.

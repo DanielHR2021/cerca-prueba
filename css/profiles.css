@@ -172,6 +172,72 @@
 .ed-preview .pf { padding-top: 12px; }
 .draft-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; max-width: 1040px; margin: 12px auto 0; padding: 12px 16px; border-radius: 16px; background: var(--moved-bg); color: var(--moved-fg); font-weight: 500; }
 .draft-wrap { background: var(--bg); }
+/* Acceso de comerciantes (T5): misma tarjeta y campos que el resto de «Negocio» */
+.auth-box { flex: none; align-items: stretch; }
+.auth-box p { margin: 0; }
+.auth-form { display: flex; flex-direction: column; gap: 8px; }
+.auth-form label { font-weight: 600; font-size: 14px; }
+.auth-form input { width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); font: inherit; font-size: 16px; color: var(--ink); }
+.auth-form input:focus-visible { outline: none; border-color: var(--ink); }
+.auth-form .btn, .auth-acts .btn { min-height: 44px; }
+.auth-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.auth-msg { padding: 8px 12px; border-radius: 12px; background: var(--hover); font-size: 14px; }
+.auth-msg.is-error { box-shadow: inset 4px 0 0 var(--closed); }
+@media (min-width: 561px) { .auth-form { flex-direction: row; flex-wrap: wrap; align-items: flex-end; } .auth-form label { flex: 1 0 100%; } .auth-form input { flex: 1 1 260px; width: auto; } }
+
+/* ===== Registro guiado (T6) y moderación (T7): mismas tarjetas, campos y botones de «Negocio» ===== */
+#view-owner.is-registro .ed-toggle, #view-owner.is-registro #editor, #view-owner.is-registro .page-grid { display: none; }
+.reg { flex: none; align-items: stretch; gap: 14px; overflow-wrap: anywhere; }
+.reg-h { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.reg-sub { margin: 8px 0 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.reg-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.reg-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 10px; border-radius: 999px; background: var(--hover); font-size: 13px; font-weight: 600; font-family: var(--font-body, inherit); }
+.reg-badge--publicado { background: #D8EFC8; color: #27501A; } .reg-badge--pendiente { background: #FFE7BD; color: #6A4200; }
+.reg-badge--requiere_correccion, .reg-badge--rechazado, .reg-badge--rechazada, .reg-badge--suspendido { background: #F8D7CF; color: #7A2A16; }
+.reg-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.reg-item { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 18px; background: var(--bg); }
+.reg-item strong { font-size: 16px; } .reg-item p { margin: 4px 0 0; }
+.reg-link { margin-left: 8px; font-weight: 600; font-size: 14px; color: var(--ink); }
+.reg-new, .reg-field { display: flex; flex-direction: column; gap: 6px; }
+.reg-field label, .reg-field .ed-label, .reg-radio legend, .mod-mot { font-weight: 600; font-size: 14px; }
+.reg input:not([type=radio]):not([type=checkbox]):not([type=file]):not([type=time]), .reg input[type=time], .reg select, .reg textarea, .mod textarea {
+  width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); font: inherit; font-size: 16px; color: var(--ink); scroll-margin: 96px 0 200px; }
+.reg textarea, .mod textarea { min-height: 88px; resize: vertical; line-height: 1.45; }
+.reg input:focus-visible, .reg select:focus-visible, .reg textarea:focus-visible, .mod textarea:focus-visible { outline: none; border-color: var(--ink); }
+.reg .reg-horas input[type=time] { width: auto; flex: 1 1 110px; min-width: 104px; max-width: 150px; padding: 6px 8px; }
+.reg-req { font-size: 12px; font-weight: 700; color: var(--closed); margin-left: 4px; } .reg-opt { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+.reg-err { margin: 0; padding: 6px 10px; border-radius: 10px; background: #F8D7CF; color: #7A2A16; font-size: 14px; }
+:root[data-theme="dark"] .reg-err { background: #4A2018; color: #FFD9CF; }
+.reg-steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.reg-steps li { flex: 1 0 auto; } .reg-steps button { width: 100%; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 4px 10px; border: 0; border-radius: 999px; background: var(--bg); color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.reg-steps span { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--line); color: var(--ink); font-size: 12px; }
+.reg-steps li[aria-current="step"] button { background: var(--strong); color: var(--on-strong); } .reg-steps li[aria-current="step"] span { background: var(--accent); color: var(--on-accent); }
+.reg-steps li.is-done span { background: #D8EFC8; color: #27501A; }
+.reg-prog { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.reg-step { display: flex; flex-direction: column; gap: 12px; } .reg-step > h3 { margin: 0; font-family: var(--font-display); font-size: 20px; } .reg-step > h3:focus { outline: none; }
+.reg-lock { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; opacity: .75; }
+.reg-radio { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.reg-radio label, .reg-chk { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px; border-radius: 14px; background: var(--bg); font-weight: 500; }
+.reg-radio input, .reg-chk input { width: 20px; height: 20px; flex: none; accent-color: var(--strong); }
+.reg-map { height: 260px; border-radius: 18px; overflow: hidden; background: var(--map); }
+.reg-map.is-off { height: auto; padding: 12px; }
+.reg-dias { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.reg-dia { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } .reg-dia .reg-chk { flex: 0 0 140px; }
+.reg-horas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.reg-mini { min-height: 36px; padding: 0 10px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); font-weight: 600; font-size: 13px; text-decoration: underline; text-align: left; }
+.reg-oferta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 10px; border-radius: 16px; background: var(--bg); }
+.reg-preview { border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.reg-preview .pf { padding: 12px 12px 20px; }
+.reg-falta { padding: 10px 14px; border-radius: 14px; background: #FFE7BD; color: #4A2E00; } .reg-falta ul { margin: 6px 0 0; padding-left: 18px; } .reg-falta .reg-mini { color: inherit; }
+.reg-nav { display: flex; justify-content: space-between; gap: 10px; } .reg-nav .btn { min-height: 44px; min-width: 120px; }
+.mod { display: flex; flex-direction: column; gap: 16px; } .mod .panel-card { align-items: stretch; }
+.mod-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; } .mod-log span { color: var(--muted); }
+.pf-act { overflow-wrap: normal; } /* las etiquetas de acción nunca se parten a mitad de palabra */
+.reg-preview .pf-actions, .mod .reg-preview .pf-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pf-contacts { display: flex; flex-direction: column; gap: 4px; } .pf-contacts a { color: inherit; font-weight: 600; }
+.pf-extra { margin: 12px 0 0; font-size: 14px; }
+@media (max-width: 560px) { .reg-dia .reg-chk { flex: 1 0 100%; } .reg-nav .btn { flex: 1; min-width: 0; } }
+
 /* Responsividad de «Negocio» (corrección 2026-11-20): los campos se ajustan al ancho disponible.
    Causa del desborde: la columna «1fr» no podía ser más estrecha que el contenido mínimo de un destacado
    (dos campos de texto con su ancho intrínseco en fila) y estiraba todo el formulario hasta ~540 px. */

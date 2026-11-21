@@ -7,8 +7,8 @@
 <meta name="description" content="Prototipo de plataforma para descubrir negocios locales. Datos de demostración.">
 <script>/* aplica el tema antes de pintar para evitar un destello */(function(){var t;try{t=localStorage.getItem('cerca.theme')}catch(e){}if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t})();</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=14">
-<link rel="stylesheet" href="css/profiles.css?v=14">
+<link rel="stylesheet" href="css/styles.css?v=17">
+<link rel="stylesheet" href="css/profiles.css?v=17">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16302B">
 <link rel="manifest" href="manifest.webmanifest">
@@ -113,7 +113,12 @@
 <div id="view-owner" hidden>
   <main class="page page--editor">
     <h1 tabindex="-1">Tu negocio en Nubi</h1>
-    <p class="notice">El registro de negocios todavía no está abierto. Lo que diseñes aquí es un borrador que se guarda solo en este dispositivo: no se publica y nadie más puede verlo.</p>
+    <p class="notice" id="owner-notice">El registro de negocios todavía no está abierto. Lo que diseñes aquí es un borrador que se guarda solo en este dispositivo: no se publica y nadie más puede verlo.</p>
+    <section class="panel-card auth-box" id="auth-box" aria-labelledby="auth-h" hidden>
+      <h2 id="auth-h">Acceso para comerciantes</h2>
+      <div id="auth-body" aria-live="polite"></div>
+    </section>
+    <section class="panel-card reg" id="reg" aria-label="Registro de negocios" hidden></section>
     <div class="viewtoggle ed-toggle" role="group" aria-label="Editor del perfil">
       <button type="button" id="ed-tab-edit" aria-pressed="true">Editar</button>
       <button type="button" id="ed-tab-prev" aria-pressed="false">Vista previa</button>
@@ -181,6 +186,14 @@
   </main>
 </div>
 
+<div id="view-admin" hidden>
+  <main class="page">
+    <h1 tabindex="-1">Moderación</h1>
+    <p class="notice">Revisa los negocios enviados antes de que aparezcan en Nubi. Servidor de pruebas.</p>
+    <div id="mod" class="mod"></div>
+  </main>
+</div>
+
 <div id="view-settings" hidden>
   <main class="page">
     <h1 tabindex="-1">Ajustes</h1>
@@ -224,17 +237,21 @@
   </form>
 </section>
 
-<script src="js/config.js?v=14"></script>
-<script src="js/data.js?v=14"></script>
-<script src="js/map.js?v=14"></script>
-<script src="js/geo.js?v=14"></script>
-<script src="js/routing.js?v=14"></script>
-<script src="js/search.js?v=14"></script>
-<script src="js/brand.js?v=14"></script>
-<script src="js/profiles.js?v=14"></script>
-<script src="js/editor.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
-<script src="js/assistant.js?v=14"></script>
+<script src="js/config.js?v=17"></script>
+<script src="js/data.js?v=17"></script>
+<script src="js/store.js?v=17"></script>
+<script src="js/map.js?v=17"></script>
+<script src="js/geo.js?v=17"></script>
+<script src="js/routing.js?v=17"></script>
+<script src="js/search.js?v=17"></script>
+<script src="js/brand.js?v=17"></script>
+<script src="js/profiles.js?v=17"></script>
+<script src="js/editor.js?v=17"></script>
+<script src="js/app.js?v=17"></script>
+<script src="js/assistant.js?v=17"></script>
+<script src="js/auth.js?v=17"></script>
+<script src="js/registro.js?v=17"></script>
+<script src="js/moderacion.js?v=17"></script>
 <script>/* PWA: registra el service worker si el navegador lo admite (solo https o localhost) */if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>

@@ -1,7 +1,8 @@
 /* Ayudante contextual con la mascota Nubi. Lógica 100 % local: reglas, preguntas frecuentes y la
    misma búsqueda tolerante de la app. No usa servicios externos ni inteligencia artificial.
    Cada acción llama a una función real de Cerca.app; no ofrece nada que no exista. */
-(function () {
+// Arranca cuando la app está lista (Cerca.app existe); ver el final de app.js.
+(function (start) { if (window.Cerca && Cerca.app) { start(); } else { document.addEventListener('nubi:app-lista', start, { once: true }); } })(function () {
   'use strict';
   var A = Cerca.app, C = window.CERCA_CONFIG, PLACE = C.municipioNombre;
   var $ = function (s) { return document.querySelector(s); };
@@ -47,9 +48,9 @@
   function nav(fn) { return function () { fn(); if (narrow()) { close(false); } }; } // en el celular, cerrar para ver el resultado
   function results(list) {
     return '<ul class="msg-results">' + list.map(function (b) {
-      return '<li><span class="r-name">' + esc(b.name) + '</span><span class="r-meta">' + esc(b.category) + ', ' + (A.isOpen(b) ? 'abierto ahora' : 'cerrado ahora') + '</span>' +
+      return '<li><span class="r-name">' + esc(b.name) + '</span><span class="r-meta">' + esc(b.category) + ', ' + esc(A.openLabel(b)) + '</span>' +
         '<span class="r-acts">' + actBtn(act('Ver en el mapa', nav(function () { A.showMap(b.id); }), { silent: true })) +
-        '<a class="chip chip--sm" href="#/negocio/' + b.id + '">Perfil</a>' +
+        '<a class="chip chip--sm" href="#/negocio/' + b.slug + '">Perfil</a>' +
         '<button type="button" class="save save--sm" data-save="' + b.id + '" aria-pressed="' + A.isSaved(b.id) + '" aria-label="Guardar ' + esc(b.name) + '">' + ICON_SAVE + '</button></span></li>';
     }).join('') + '</ul>';
   }
@@ -200,4 +201,4 @@
     onRoute: function () { if (!panel.hidden) { greet(); } },
     open: open
   };
-})();
+});

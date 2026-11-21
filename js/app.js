@@ -1,9 +1,10 @@
 /* Lógica de la interfaz. Sin dependencias; clásico (funciona abriendo index.html directamente).
    Vistas por hash: #/ Explorar, #/guardados, #/mi-negocio, #/ajustes, #/negocio/ID (perfil).
    Expone Cerca.app para que el asistente use las mismas funciones que la interfaz. */
-(function () {
+// T8: la app arranca cuando la capa de datos tiene los negocios (inmediato con la demo; tras la consulta con Supabase).
+Cerca.store.ready().then(function () {
   'use strict';
-  var C = window.CERCA_CONFIG, DATA = window.CERCA_DEMO;
+  var C = window.CERCA_CONFIG, S = Cerca.store, DATA = S.list(); // T1: los negocios llegan solo por la capa de datos
   var params = new URLSearchParams(location.search);
   if (params.get('map') === 'svg') { C.mapProvider = 'svg'; } else if (params.get('map') === 'maplibre') { C.mapProvider = 'maplibre'; }
   if (params.get('style')) { C.mapStyleUrl = params.get('style'); C.styleLocked = true; } // solo para probar otros estilos
@@ -14,28 +15,31 @@
   var ICON_SAVE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/></svg>';
   var mascot = function (m) { if (window.Cerca.assistant) { Cerca.assistant.mood(m); } };
 
-  function currentHour() {
-    var o = params.get('hora');
-    if (o !== null && o !== '' && !isNaN(+o)) { return +o; }
-    try { return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: C.timezone, hour: 'numeric', hourCycle: 'h23' }).format(new Date()), 10) % 24; }
-    catch (e) { return new Date().getHours(); }
+  /* Momento actual en la zona horaria del municipio: { day: 0-6 (domingo = 0), min }. Para pruebas: ?hora=H y ?dia=D. */
+  function currentTime() {
+    var t = { day: new Date().getDay(), min: new Date().getHours() * 60 + new Date().getMinutes() };
+    try {
+      var p = {}; new Intl.DateTimeFormat('en-US', { timeZone: C.timezone, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' })
+        .formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+      t = { day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday), min: (parseInt(p.hour, 10) % 24) * 60 + parseInt(p.minute, 10) };
+    } catch (e) { /* sin Intl: hora del dispositivo */ }
+    var h = params.get('hora'), d = params.get('dia');
+    if (h !== null && h !== '' && !isNaN(+h)) { t.min = (+h) * 60; }
+    if (d !== null && d !== '' && !isNaN(+d)) { t.day = (+d) % 7; }
+    return t;
   }
-  var HOUR = currentHour();
-  function fmtHour(h) { return (h % 12 === 0 ? 12 : h % 12) + ':00 ' + (h >= 12 ? 'p. m.' : 'a. m.'); }
-  function isOpen(b) { return b.hours.from <= HOUR && HOUR < b.hours.to; }
-  function hoursText(b) { return 'Hoy ' + fmtHour(b.hours.from) + ' a ' + fmtHour(b.hours.to); }
-  function byId(id) { return DATA.filter(function (b) { return b.id === id; })[0]; }
+  var NOW = currentTime();
+  // T2: true solo si el horario publicado lo confirma; sin horario conocido nunca se dice «abierto».
+  function isOpen(b) { return S.openAt(b, NOW) === true; }
+  function hoursText(b) { return S.hoursLabel(b, NOW); }
+  function byId(id) { return S.get(id); }
 
   var state = { cat: 'Todos', q: '', openOnly: false, sel: null, pane: 'map', approx: false, view: 'home' };
 
   /* ---------- Guardados (solo en este dispositivo) ---------- */
-  var SAVED_KEY = 'cerca.saved';
-  var saved = (function () {
-    var ids = [];
-    try { ids = JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch (e) { ids = []; }
-    return ids.filter(function (id) { return !!byId(id); });
-  })();
-  function persist() { try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch (e) { /* sin almacenamiento: dura esta visita */ } }
+  // T2: se guardan identificadores estables (uid); la migración desde 'cerca.saved' la hace la capa de datos sin borrar nada.
+  var saved = S.favorites.load();
+  function persist() { S.favorites.save(saved); }
   function isSaved(id) { return saved.indexOf(id) !== -1; }
   function toggleSave(id) {
     if (!byId(id)) { return false; }
@@ -72,7 +76,9 @@
   /* ---------- Render ---------- */
   var el = {};
   function statusHtml(b) {
-    return '<span class="status ' + (isOpen(b) ? 'is-open' : 'is-closed') + '">' + (isOpen(b) ? 'Abierto ahora' : 'Cerrado ahora') + '</span>' +
+    var o = S.openAt(b, NOW); // null = no se sabe (con cita, variable o sin horario): no se afirma abierto ni cerrado
+    var txt = o === true ? 'Abierto ahora' : o === false ? 'Cerrado ahora' : hoursText(b);
+    return '<span class="status' + (o === true ? ' is-open' : o === false ? ' is-closed' : '') + '">' + esc(txt) + '</span>' +
       (b.moved ? '<span class="tag tag--moved">Reubicado</span>' : '') + (b.fresh ? '<span class="tag tag--new">Nuevo</span>' : '');
   }
   function cardHtml(b, mode) { // mode 'pick' = selecciona en el mapa; 'map' = abre Explorar en el mapa
@@ -84,7 +90,7 @@
       (mode === 'pick' && state.q.trim() && state.hits && state.hits[b.id] && Cerca.search.words(state.hits[b.id]).join(' ') !== Cerca.search.words(state.q).join(' ')
         ? '<span class="card-hit"><span class="sr-only">Coincide con </span>' + esc(state.hits[b.id]) + '</span>' : '') +
       '<span class="card-meta">' + statusHtml(b) + '</span></span></button>' + saveBtn(b) +
-      '<a class="card-link" href="#/negocio/' + b.id + '" aria-label="Ver perfil de ' + esc(b.name) + '">Ver perfil</a></li>';
+      '<a class="card-link" href="#/negocio/' + b.slug + '" aria-label="Ver perfil de ' + esc(b.name) + '">Ver perfil</a></li>';
   }
   function renderChips() {
     el.chips.innerHTML = CATS.map(function (c) {
@@ -166,7 +172,7 @@
     }
     el.selcard.innerHTML = (hasRoute ? '<button type="button" class="selcard-toggle" data-card-min aria-expanded="true" aria-label="Minimizar la ficha">' + I_CHEV_DOWN + '</button>' : '') +
       '<h3>' + esc(b.name) + '</h3><p class="muted">' + esc(b.category) + ', ' + hoursText(b).toLowerCase() + '</p><p>' + esc(b.blurb) + '</p>' +
-      '<div class="card-meta">' + statusHtml(b) + '</div><div class="selcard-actions"><a class="btn btn--accent" href="#/negocio/' + b.id + '">Ver perfil</a>' + saveBtn(b) + '</div>' + routeHtml(b);
+      '<div class="card-meta">' + statusHtml(b) + '</div><div class="selcard-actions"><a class="btn btn--accent" href="#/negocio/' + b.slug + '">Ver perfil</a>' + saveBtn(b) + '</div>' + routeHtml(b);
   }
   /* Módulo 01, Fase 3: ruta a pie. Distancia y duración vienen del servicio de rutas; nunca se calculan aquí. */
   function fmtDuration(s) { var m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min'; }
@@ -178,6 +184,8 @@
         (b.demo ? '<p class="route-note">El destino es el punto de prueba de este negocio ficticio.</p>' : '') +
         '<button type="button" class="geo-act" data-route-clear>Quitar ruta</button></div>';
     }
+    // D4/D10: sin punto público de atención (negocio por zona) nunca se ofrece ruta.
+    if (!S.canRoute(b)) { return '<div class="route-ask"><p class="route-note">Atiende en una zona general, sin punto público: no hay ruta hasta este negocio.</p></div>'; }
     var busy = state.routing === b.id;
     return '<div class="route-ask"><button type="button" class="btn btn--ghost route-btn" data-route="' + b.id + '"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
       (busy ? 'Calculando ruta…' : 'Ruta a pie') + '</button>' +
@@ -192,7 +200,7 @@
     if (state.route && state.sel && state.route.id !== state.sel) { state.route = null; map.clearRoute(); }
     renderList(items); renderSelCard(items); renderSheet(items);
     var vis = new Set(items.map(function (b) { return b.id; }));
-    var closed = new Set(DATA.filter(function (b) { return !isOpen(b); }).map(function (b) { return b.id; }));
+    var closed = new Set(DATA.filter(function (b) { return S.openAt(b, NOW) === false; }).map(function (b) { return b.id; }));
     map.update({ visible: vis, selected: state.sel, closed: closed });
     el.discover.dataset.pane = state.pane;
     $('#pane-list').setAttribute('aria-pressed', state.pane === 'list');
@@ -247,21 +255,21 @@
     var b = state.profile; if (!b) { return; }
     if (btn.dataset.pfAct === 'map') { showMap(b.id); }
     if (btn.dataset.pfAct === 'share') {
-      var url = location.href.split('#')[0] + '#/negocio/' + b.id, data = { title: b.name, text: b.name + ' en ' + C.municipioNombre + ' (negocio de prueba)', url: url };
+      var url = location.href.split('#')[0] + '#/negocio/' + b.slug, data = { title: b.name, text: b.name + ' en ' + C.municipioNombre + ' (negocio de prueba)', url: url };
       if (navigator.share) { navigator.share(data).catch(function () { /* el usuario canceló */ }); }
       else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast('Enlace copiado.'); }, function () { toast('Copia este enlace: ' + url); }); }
       else { toast('Copia este enlace: ' + url); }
     }
   }
-  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', draft: 'Vista previa de tu negocio' };
+  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', draft: 'Vista previa de tu negocio', admin: 'Moderación' };
   function route() {
     var h = location.hash || '#/';
-    var m = /^#\/negocio\/(\d+)$/.exec(h), b = m && byId(+m[1]);
+    var m = /^#\/negocio\/([\w-]+)$/.exec(h), b = m && S.resolve(m[1]); // slug estable; los números antiguos de la demo siguen funcionando
     var prev = state.view;
-    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : 'home';
+    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : h === '#/admin' ? 'admin' : 'home';
     state.profile = b || null;
     Object.keys(VIEWS).forEach(function (v) { $('#view-' + v).hidden = v !== state.view; });
-    var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view;
+    var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view === 'admin' ? 'settings' : state.view;
     $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === navKey) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); } });
     document.title = (b ? b.name : VIEWS[state.view]) + ' · ' + C.appName;
     if (state.view === 'profile') { renderProfile(b); }
@@ -303,7 +311,7 @@
   };
   var onManualMove = function () {}; // lo define el módulo de ubicación (Fase 2)
   var map = Cerca.createMap({
-    container: $('#map'), businesses: DATA, config: C, onSelect: function (id) { pick(id, true); },
+    container: $('#map'), businesses: DATA.filter(S.hasPoint), /* sin punto público no hay marcador (D10) */ config: C, onSelect: function (id) { pick(id, true); },
     onManualMove: function () { onManualMove(); },
     onBackgroundClick: function () {
       if (sheet === 'peek' || sheet === 'full') { setSheet('min'); return; } // M03: tocar el mapa recoge los resultados (la búsqueda sigue)
@@ -460,7 +468,7 @@
   ['pointerdown', 'keydown'].forEach(function (t) { $('#selcard').addEventListener(t, cancelAutoMin); });
 
   function requestRoute(id) {
-    var b = byId(id); if (!b || state.routing) { return; }
+    var b = byId(id); if (!b || state.routing || !S.canRoute(b)) { return; } // también se bloquea aquí, no solo en la interfaz
     cancelAutoMin();
     state.routing = id; renderSelCard(filtered());
     geoCtl.ensureLocation().then(function (u) {
@@ -573,6 +581,7 @@
     cardState: function () { return { visible: !el.selcard.hidden, min: el.selcard.classList.contains('is-min'), timer: !!minTimer, sel: state.sel }; }, // solo para pruebas
     setAutoMinMs: function (ms) { var p = AUTO_MIN_MS; AUTO_MIN_MS = ms; return p; }, // solo para pruebas (acortar la espera)
     data: DATA, categories: CATS.slice(1), isOpen: isOpen, hoursText: hoursText, byId: byId,
+    openLabel: function (b) { var o = S.openAt(b, NOW); return o === true ? 'abierto ahora' : o === false ? 'cerrado ahora' : hoursText(b).toLowerCase(); },
     view: function () { return state.view; }, profile: function () { return state.profile; },
     search: function (q) { state.q = q; state.cat = 'Todos'; state.openOnly = false; state.pane = 'list'; el.input.value = q; renderChips(); go('#/'); return afterFilterChange(); },
     setCategory: function (c) { state.cat = c; state.q = ''; el.input.value = ''; state.pane = 'list'; renderChips(); go('#/'); return afterFilterChange(); },
@@ -588,4 +597,5 @@
   window.addEventListener('hashchange', route);
   paintSaved();
   route();
-})();
+  document.dispatchEvent(new Event('nubi:app-lista')); // el asistente y el registro arrancan después
+});
