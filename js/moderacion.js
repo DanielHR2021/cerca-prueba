@@ -11,7 +11,8 @@
   var $ = function (s, el) { return (el || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
   var ACC = { crear_negocio: 'Negocio creado', nueva_revision: 'Cambios iniciados', enviar_revision: 'Enviado a revisión', retirar_revision: 'Envío retirado',
-    aprobar_revision: 'Aprobado', solicitar_correccion: 'Corrección pedida', rechazar_revision: 'Rechazado', suspender_negocio: 'Suspendido', reactivar_negocio: 'Reactivado' };
+    aprobar_revision: 'Aprobado', solicitar_correccion: 'Corrección pedida', rechazar_revision: 'Rechazado', suspender_negocio: 'Suspendido', reactivar_negocio: 'Reactivado',
+    retirar_negocio: 'Retirado por su propietario', eliminar_borrador: 'Borrador eliminado', eliminar_negocio: 'Eliminado definitivamente' };
   var st = { admin: null, pend: [], pub: [], reg: [], nombres: {}, zonas: {}, abierta: null, msg: '', msgErr: false };
   function client() { return Cerca.auth.ready(); }
   function root() { return $('#mod'); }
@@ -32,6 +33,7 @@
         var err = r.filter(function (x) { return x.error; })[0]; if (err) { throw err.error; }
         st.pend = r[0].data; st.nombres = {}; r[1].data.forEach(function (n) { st.nombres[n.id] = n.nombre; });
         st.pub = r[1].data.filter(function (n) { return n.estado === 'publicado' || n.estado === 'suspendido'; });
+        st.ret = r[1].data.filter(function (n) { return n.estado === 'retirado'; });
         st.reg = r[2].data; st.zonas = {}; r[3].data.forEach(function (z) { st.zonas[z.id] = z.nombre; });
       });
     }).then(pintar, function (e) { say('No se pudo cargar el panel: ' + (e.message || e), true); });
@@ -72,8 +74,13 @@
           (n.estado === 'publicado' ? '<label class="mod-mot" for="mot-' + n.id + '">Motivo de suspensión</label><textarea id="mot-' + n.id + '" maxlength="500"></textarea><div class="auth-acts"><button type="button" class="btn btn--ghost" data-mod="suspender" data-id="' + n.id + '">Suspender</button></div>'
             : '<div class="auth-acts"><button type="button" class="btn" data-mod="reactivar" data-id="' + n.id + '">Reactivar</button></div>') + '</li>';
       }).join('') + '</ul>' : '<p>Aún no hay negocios publicados.</p>') + '<p class="ed-hint">Los cambios aprobados aparecen en el mapa al recargar la app.</p></section>' +
+      ((st.ret || []).length ? '<section class="panel-card"><h2>Retirados por su propietario (' + st.ret.length + ')</h2><p class="ed-hint">No se muestran al público. Elimínalos definitivamente solo si el comerciante lo pidió.</p><ul class="reg-list">' + st.ret.map(function (n) {
+        return '<li class="reg-item"><div><strong>' + esc(n.nombre || 'Sin nombre') + '</strong> <span class="reg-badge reg-badge--retirado">Retirado</span></div>' +
+          '<label class="mod-mot" for="mot-' + n.id + '">Motivo de la eliminación</label><textarea id="mot-' + n.id + '" maxlength="500" placeholder="Ej.: El comerciante pidió borrar sus datos"></textarea>' +
+          '<div class="auth-acts"><button type="button" class="btn btn--ghost" data-mod="eliminar" data-id="' + n.id + '">Eliminar definitivamente</button></div></li>';
+      }).join('') + '</ul></section>' : '') +
       '<section class="panel-card"><h2>Últimas acciones</h2>' + (st.reg.length ? '<ul class="mod-log">' + st.reg.map(function (x) {
-        return '<li><span>' + esc(fecha(x.en)) + '</span> ' + esc(ACC[x.accion] || x.accion) + ' · ' + esc(st.nombres[x.negocio_id] || '—') + (x.detalle && x.detalle.motivo ? ' · «' + esc(x.detalle.motivo) + '»' : '') + '</li>';
+        return '<li><span>' + esc(fecha(x.en)) + '</span> ' + esc(ACC[x.accion] || x.accion) + ' · ' + esc(st.nombres[x.negocio_id] || (x.detalle && x.detalle.nombre) || '—') + (x.detalle && x.detalle.motivo ? ' · «' + esc(x.detalle.motivo) + '»' : '') + '</li>';
       }).join('') + '</ul>' : '<p>Sin acciones todavía.</p>') + '</section>' +
       '<section class="panel-card"><h2>Copia de seguridad</h2><p>Descarga en un archivo todos los datos del servidor de pruebas que la administración puede leer (negocios, revisiones, horarios, contactos, ofertas, rutas de imágenes y registro). No incluye correos de usuarios ni las imágenes.</p>' +
       '<div class="auth-acts"><button type="button" class="btn" data-mod="copia">Descargar copia (JSON)</button></div><p class="ed-hint">Guárdala en una carpeta privada. Procedimiento completo: docs/operacion/copias-de-seguridad.md.</p></section>';
@@ -104,6 +111,11 @@
     if (a === 'corregir') { if (motivo(id).length < 5) { say('Escribe qué debe corregir (mínimo 5 caracteres).', true); return; } rpc('solicitar_correccion', { p_revision: id, p_motivo: motivo(id) }, 'Se pidió la corrección.'); }
     if (a === 'rechazar') { if (motivo(id).length < 5) { say('Escribe el motivo del rechazo (mínimo 5 caracteres).', true); return; } rpc('rechazar_revision', { p_revision: id, p_motivo: motivo(id) }, 'Rechazado.'); }
     if (a === 'suspender') { if (motivo(id).length < 5) { say('Escribe el motivo de la suspensión.', true); return; } rpc('suspender_negocio', { p_negocio: id, p_motivo: motivo(id) }, 'Negocio suspendido: ya no se muestra al público.'); }
+    if (a === 'eliminar') {
+      if (motivo(id).length < 5) { say('Escribe el motivo de la eliminación (mínimo 5 caracteres).', true); return; }
+      if (!confirm('¿Eliminar definitivamente este negocio y todos sus datos? No se puede deshacer. Descarga una copia antes si la necesitas.')) { return; }
+      rpc('eliminar_negocio', { p_negocio: id, p_motivo: motivo(id) }, 'Negocio eliminado definitivamente (queda constancia en el registro).');
+    }
     if (a === 'reactivar') { rpc('reactivar_negocio', { p_negocio: id }, 'Negocio reactivado.'); }
     if (a === 'copia') { copia(); }
   });

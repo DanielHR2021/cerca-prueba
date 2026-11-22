@@ -182,15 +182,17 @@ Cerca.store.ready().then(function () {
       return '<div class="route-info"><p class="route-sum"><strong>≈ ' + fmtDuration(r.durationS) + ' a pie</strong>, ' + Cerca.geo.fmtDistance(r.distanceM) + '</p>' +
         '<p class="route-note">' + esc(r.provider.attribution) + '. <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Corregir el mapa</a></p>' +
         (b.demo ? '<p class="route-note">El destino es el punto de prueba de este negocio ficticio.</p>' : '') +
-        '<button type="button" class="geo-act" data-route-clear>Quitar ruta</button></div>';
+        '<div class="geo-msg-acts"><button type="button" class="geo-act" data-route-clear>Quitar ruta</button>' + mapsLink(b) + '</div></div>';
     }
     // D4/D10: sin punto público de atención (negocio por zona) nunca se ofrece ruta.
     if (!S.canRoute(b)) { return '<div class="route-ask"><p class="route-note">Atiende en una zona general, sin punto público: no hay ruta hasta este negocio.</p></div>'; }
     var busy = state.routing === b.id;
     return '<div class="route-ask"><button type="button" class="btn btn--ghost route-btn" data-route="' + b.id + '"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
-      (busy ? 'Calculando ruta…' : 'Ruta a pie') + '</button>' +
-      '<p class="route-note">Para calcularla se envían tu ubicación y el destino al servicio público de rutas de OpenStreetMap (FOSSGIS, Alemania).</p></div>';
+      (busy ? 'Calculando ruta…' : 'Ruta a pie') + '</button>' + mapsLink(b) +
+      '<p class="route-note">Para calcularla se envían tu ubicación y el destino al servicio público de rutas de OpenStreetMap (FOSSGIS, Alemania). «Abrir en Google Maps» usa la app o web de Google.</p></div>';
   }
+  /* M04: navegación externa sin API ni clave (enlace oficial de Google Maps). Solo con punto público (D10). */
+  function mapsLink(b) { var h = S.mapsHref(b); return h ? '<a class="geo-act route-ext" href="' + esc(h) + '" target="_blank" rel="noopener">Abrir en Google Maps</a>' : ''; }
   function render() {
     var items = filtered();
     // Si un filtro o la búsqueda ocultan el negocio seleccionado, se deselecciona; una ruta activa se conserva
@@ -480,7 +482,12 @@ Cerca.store.ready().then(function () {
         map.setRoute(r.coords, { bottom: el.selcard.offsetHeight + 24 });
         geoCtl.hide();
         scheduleAutoMin(id); // solo tras una ruta válida y dibujada
-      }, function (err) { geoCtl.show(err.message, { error: true, acts: err.code === 'timeout' || err.code === 'rate' || err.code === 'unavailable' || err.code === 'offline' ? [['Intentar de nuevo', function () { geoCtl.hide(); requestRoute(id); }]] : [] }); });
+      }, function (err) {
+        // Si el servicio de rutas falla, se ofrece la navegación externa (M04).
+        var acts = err.code === 'timeout' || err.code === 'rate' || err.code === 'unavailable' || err.code === 'offline' ? [['Intentar de nuevo', function () { geoCtl.hide(); requestRoute(id); }]] : [];
+        if (S.mapsHref(b) && err.code !== 'offline') { acts.push(['Abrir en Google Maps', function () { window.open(S.mapsHref(b), '_blank', 'noopener'); }]); }
+        geoCtl.show(err.message, { error: true, acts: acts });
+      });
     }, function () { /* el mensaje de ubicación ya se mostró */ }).then(function () { state.routing = null; renderSelCard(filtered()); });
   }
   document.addEventListener('click', function (e) {

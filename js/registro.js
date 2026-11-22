@@ -13,7 +13,7 @@
   var STEPS = ['Lo básico', 'Ubicación', 'Horarios', 'Contacto', 'Oferta y fotos', 'Vista previa'];
   var DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   var PAGOS = ['Efectivo', 'Nequi', 'Daviplata', 'Transferencia', 'Tarjeta'];
-  var ESTADO = { borrador: 'Borrador', pendiente: 'En revisión', publicado: 'Publicado', requiere_correccion: 'Requiere corrección', rechazado: 'Rechazado', suspendido: 'Suspendido',
+  var ESTADO = { borrador: 'Borrador', pendiente: 'En revisión', publicado: 'Publicado', requiere_correccion: 'Requiere corrección', rechazado: 'Rechazado', suspendido: 'Suspendido', retirado: 'Retirado',
     aprobada: 'Aprobada', rechazada: 'Rechazada', retirada: 'Retirada' };
   var MAX_OFERTAS = 12, MAX_GALERIA = 4;
 
@@ -163,6 +163,29 @@
     client().then(function (c) { return c.rpc('retirar_revision', { p_revision: neg.abierta.id }); }).then(function (r) { if (r.error) { throw r.error; } say('Envío retirado.'); return refrescar(); })
       .catch(function (e) { say(errText(e), true); });
   }
+  /* M04: retirar un negocio publicado (deja de verse al instante) y eliminar uno que nunca se publicó. */
+  function retirarNegocio(neg) {
+    var motivo = prompt('¿Retirar «' + neg.titulo + '» de Nubi? Dejará de verse de inmediato. Puedes escribir el motivo (opcional):', '');
+    if (motivo === null) { return; }
+    client().then(function (c) { return c.rpc('retirar_negocio', { p_negocio: neg.id, p_motivo: motivo || null }); }).then(function (r) {
+      if (r.error) { throw r.error; } say('Retirado: ya no se muestra en Nubi.'); return refrescar();
+    }).catch(function (e) { say(errText(e), true); });
+  }
+  function eliminarBorrador(neg) {
+    if (!confirm('¿Eliminar «' + neg.titulo + '» y todo su borrador? Esta acción no se puede deshacer.')) { return; }
+    say('Eliminando…');
+    client().then(function (c) {
+      // Primero las imágenes que subió (Storage); la base de datos no borra archivos.
+      return c.from('revisiones').select('datos').eq('negocio_id', neg.id).then(function (r) {
+        var rutas = []; (r.data || []).forEach(function (x) { ((x.datos && x.datos.medios) || []).forEach(function (m) { if (m.ruta && rutas.indexOf(m.ruta) === -1) { rutas.push(m.ruta); } }); });
+        return rutas.length ? c.storage.from('medios').remove(rutas) : null;
+      }).then(function () { return c.rpc('eliminar_borrador', { p_negocio: neg.id }); });
+    }).then(function (r) {
+      if (r.error) { throw r.error; }
+      Object.keys(localStorage).filter(function (k) { return /^nubi\.registro\./.test(k); }).forEach(function (k) { if (neg.abierta && k === 'nubi.registro.' + neg.abierta.id) { localStorage.removeItem(k); } });
+      say('Eliminado.'); return refrescar();
+    }).catch(function (e) { say(errText(e), true); });
+  }
   function refrescar() { return cargarLista().then(function (l) { st.negocios = l; if (st.view === 'lista') { pintar(); } }).catch(function (e) { say(errText(e), true); }); }
 
   /* ---------- Pintar ---------- */
@@ -178,12 +201,18 @@
         var a = n.abierta, est = a ? ESTADO[a.estado] : ESTADO[n.estado] || n.estado;
         var acts = a && /^(borrador|requiere_correccion)$/.test(a.estado) ? '<button type="button" class="btn" data-reg="abrir" data-id="' + n.id + '">Continuar</button>' :
           a && a.estado === 'pendiente' ? '<button type="button" class="btn btn--ghost" data-reg="ver" data-id="' + n.id + '">Ver envío</button><button type="button" class="btn btn--ghost" data-reg="retirar" data-id="' + n.id + '">Retirar envío</button>' :
-          n.estado === 'publicado' || n.estado === 'suspendido' ? '<button type="button" class="btn" data-reg="editar" data-id="' + n.id + '">Proponer cambios</button>' : '';
+          n.estado === 'publicado' || n.estado === 'suspendido' ? '<button type="button" class="btn" data-reg="editar" data-id="' + n.id + '">Proponer cambios</button>' :
+          n.estado === 'retirado' && n.publicado_en ? '<button type="button" class="btn btn--ghost" data-reg="editar" data-id="' + n.id + '">Volver a publicar</button>' : '';
+        // M04: retirar (propietario, si no está retirado ni suspendido) y eliminar (solo si nunca se publicó)
+        var esProp = n.rol === 'propietario';
+        if (esProp && n.estado !== 'retirado' && n.estado !== 'suspendido' && n.publicado_en) { acts += '<button type="button" class="btn btn--ghost" data-reg="retirarneg" data-id="' + n.id + '">Retirar de Nubi</button>'; }
+        if (esProp && !n.publicado_en && !(a && a.estado === 'pendiente')) { acts += '<button type="button" class="btn btn--ghost" data-reg="eliminar" data-id="' + n.id + '">Eliminar</button>'; }
         return '<li class="reg-item"><div><strong>' + esc(n.titulo) + '</strong><span class="reg-badge reg-badge--' + esc(a ? a.estado : n.estado) + '">' + esc(est) + '</span>' +
           (n.estado === 'publicado' && n.slug ? '<a class="reg-link" href="#/negocio/' + esc(n.slug) + '">Ver ficha pública</a>' : '') +
           (a && a.estado === 'requiere_correccion' && a.motivo ? '<p class="ed-hint">Corrección pedida: ' + esc(a.motivo) + '</p>' : '') +
           (!a && n.ultima && n.ultima.estado === 'rechazada' ? '<p class="ed-hint">Rechazado: ' + esc(n.ultima.motivo || '') + '</p>' : '') +
           (n.estado === 'publicado' && a ? '<p class="ed-hint">La ficha pública sigue mostrando la versión aprobada mientras se revisan los cambios.</p>' : '') +
+          (n.estado === 'retirado' ? '<p class="ed-hint">No se muestra en Nubi. Si quieres que se borre por completo, escríbele a la administración; si quieres volver, usa «Volver a publicar».</p>' : '') +
           '</div><div class="auth-acts">' + acts + '</div></li>';
       }).join('') + '</ul>' : '<p>Todavía no tienes negocios registrados.</p>') +
       '<form class="reg-new" id="reg-new-form">' + campo('reg-nuevo', 'Registrar un negocio nuevo', '<input id="reg-nuevo" maxlength="60" autocomplete="organization" placeholder="Ej.: Panadería La Espiga">', 'Después completarás la información en 6 pasos. Puedes guardar y volver cuando quieras.') +
@@ -369,6 +398,8 @@
     if (a === 'abrir' || a === 'ver') { var n = neg(); if (n && n.abierta) { abrirRevision(n, n.abierta); } }
     if (a === 'editar') { editarPublicado(neg()); }
     if (a === 'retirar') { retirar(neg()); }
+    if (a === 'retirarneg') { retirarNegocio(neg()); }
+    if (a === 'eliminar') { eliminarBorrador(neg()); }
     if (a === 'volver') { guardar(true); st.view = 'lista'; st.rev = null; say(''); refrescar(); pintar(); }
     if (a === 'paso') { irA(+b.dataset.i); }
     if (a === 'siguiente') { irA(st.step + 1); }

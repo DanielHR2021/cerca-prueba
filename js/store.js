@@ -105,6 +105,8 @@
     return ({ whatsapp: 'https://wa.me/' + v.slice(1), telefono: 'tel:' + v, correo: 'mailto:' + v, instagram: 'https://instagram.com/' + v,
       facebook: 'https://facebook.com/' + v, tiktok: 'https://www.tiktok.com/@' + v, web: v })[kind] || null;
   }
+  // Enlace oficial «Maps URLs» de Google (sin clave). A pie; solo para negocios con punto público.
+  function mapsHref(b) { return hasPoint(b) ? 'https://www.google.com/maps/dir/?api=1&destination=' + b.lat + ',' + b.lng + '&travelmode=walking' : null; }
   function hasPoint(b) { return !!(b && b.location && b.location.mode === 'local' && isFinite(b.lat) && isFinite(b.lng)); }
 
   /* ---------- Conversión desde la base de datos (T8) ----------
@@ -174,17 +176,30 @@
       });
     });
   }
+  /* M04: última lista pública aprobada guardada en este dispositivo, para verla sin conexión.
+     Solo datos públicos (los mismos que cualquiera ve); caduca a los 7 días. */
+  var PUB_KEY = 'nubi.publicos.v1', PUB_MAX_MS = 7 * 24 * 3600 * 1000, fromCache = false;
+  function savePublic(list) { try { localStorage.setItem(PUB_KEY, JSON.stringify({ t: Date.now(), mun: (window.CERCA_CONFIG || {}).municipio, list: list })); } catch (e) { /* sin espacio: se ignora */ } }
+  function cachedPublic() {
+    try {
+      var c = JSON.parse(localStorage.getItem(PUB_KEY));
+      if (c && Array.isArray(c.list) && Date.now() - c.t < PUB_MAX_MS && c.mun === (window.CERCA_CONFIG || {}).municipio) { fromCache = true; return c.list; }
+    } catch (e) { /* nada */ }
+    return [];
+  }
+  function loadPublic() {
+    return withTimeout(loadSupabase(), 6000).then(function (l) { lastError = null; fromCache = false; savePublic(l); return l; }, function (e) { lastError = e; return cachedPublic(); });
+  }
   function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('tiempo')); }, ms); })]); }
 
   /* ---------- Adaptadores ---------- */
   var lastError = null;
   var adapters = {
     demo: { name: 'Datos de demostración', list: function () { return window.CERCA_DEMO || []; } },
-    supabase: { name: 'Negocios aprobados (Supabase)', load: function () { return withTimeout(loadSupabase(), 6000); } },
-    // Piloto: los negocios reales aprobados + la demostración (marcada). Si el servidor falla, queda la demo.
-    mixto: { name: 'Aprobados + demostración', load: function () {
-      return withTimeout(loadSupabase(), 6000).catch(function (e) { lastError = e; return []; }).then(function (real) { return real.concat(window.CERCA_DEMO || []); });
-    } }
+    // Sin conexión, ambos usan la última lista aprobada guardada en el dispositivo (si tiene menos de 7 días).
+    supabase: { name: 'Negocios aprobados (Supabase)', load: loadPublic },
+    // Piloto con demostración: los negocios reales aprobados + los 10 ficticios (marcados).
+    mixto: { name: 'Aprobados + demostración', load: function () { return loadPublic().then(function (real) { return real.concat(window.CERCA_DEMO || []); }); } }
   };
 
   var all = [], byHandle = {}, bySlug = {}, byUid = {}, byLegacy = {};
@@ -241,9 +256,10 @@
     get: function (handle) { return byHandle[handle] || null; },
     // Resuelve lo que llega en la dirección: slug, uid o número antiguo de la demo.
     resolve: function (key) { key = String(key); return bySlug[key] || byUid[key] || (/^\d+$/.test(key) ? byLegacy[+key] : null) || null; },
-    hasPoint: hasPoint, canRoute: hasPoint,
+    hasPoint: hasPoint, canRoute: hasPoint, mapsHref: mapsHref,
     hoursOf: hoursOf, openAt: openAt, hoursLabel: hoursLabel, fmtTime: fmtTime,
     normalize: normalize, publicRows: publicRows, favorites: favorites, slugify: slugify,
-    fromDb: fromDb, fromDatos: fromDatos, normalizeContact: normalizeContact, contactHref: contactHref, CONTACT_KINDS: CONTACT_KINDS, mediaUrl: mediaUrl, lastError: function () { return lastError; }
+    fromDb: fromDb, fromDatos: fromDatos, normalizeContact: normalizeContact, contactHref: contactHref, CONTACT_KINDS: CONTACT_KINDS, mediaUrl: mediaUrl, lastError: function () { return lastError; }, fromCache: function () { return fromCache; },
+    _publicCache: { save: savePublic, read: cachedPublic, load: loadPublic, KEY: PUB_KEY } // pruebas
   };
 })();

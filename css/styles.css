@@ -301,6 +301,7 @@ button, input, select { font: inherit; color: inherit; }
 .map-locate.is-tracking .i-locate { color: var(--geo); fill: var(--geo); }
 /* Fase 3: ruta a pie (dentro de la tarjeta del negocio seleccionado) */
 .route-ask, .route-info { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.route-ext { display: inline-flex; align-items: center; min-height: 40px; text-decoration: none; }
 .route-btn[disabled] { opacity: .7; cursor: progress; }
 .route-sum { margin: 0; font-size: 16px; }
 .route-note { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
