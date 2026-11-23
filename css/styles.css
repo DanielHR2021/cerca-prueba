@@ -106,6 +106,8 @@ h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-
 .map-status { position: absolute; top: 60px; left: 12px; z-index: 6; margin: 0; max-width: min(360px, calc(100% - 24px)); padding: 8px 14px; background: var(--moved-bg); color: var(--moved-fg); border-radius: 16px; font-size: 13px; line-height: 1.35; }
 .demo-note { margin: 0 0 8px; padding: 8px 12px; background: var(--moved-bg); color: var(--moved-fg); border-radius: 12px; font-size: 14px; }
 .maplibregl-ctrl-top-right { top: 4px; right: 4px; }
+/* Zoom del mapa con objetivo táctil de 40 px (MapLibre trae 29 px) */
+.mapwrap .maplibregl-ctrl-group button { width: 40px; height: 40px; }
 .pin { border: 0; background: transparent; padding: 8px; -webkit-tap-highlight-color: transparent; }
 .pin--svg { position: absolute; transform: translate(-50%, -100%); }
 .pin .drop { display: block; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; background: var(--pin); border: 3px solid #fff; box-shadow: 0 3px 8px rgba(22,48,43,.28), var(--pin-glow); transform: rotate(-45deg); transition: transform .15s; }

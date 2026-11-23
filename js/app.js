@@ -123,7 +123,7 @@ Cerca.store.ready().then(function () {
   function ritemHtml(b, i) {
     var hit = state.hits && state.hits[b.id], pic = typeof b.photo === 'string' ? b.photo : '';
     return '<li style="--i:' + i + '"><button type="button" class="ritem' + (state.sel === b.id ? ' is-sel' : '') + '" data-rpick="' + b.id + '">' +
-      (pic ? '<img class="ritem-pic" src="' + esc(pic) + '" alt="">' : '<span class="card-ico pfv" style="' + Cerca.profiles.vars(b) + '">' + Cerca.profiles.icon(b.icon, 22) + '</span>') +
+      (pic ? '<img class="ritem-pic" src="' + esc(pic) + '" alt="" loading="lazy" decoding="async">' : '<span class="card-ico pfv" style="' + Cerca.profiles.vars(b) + '">' + Cerca.profiles.icon(b.icon, 22) + '</span>') +
       '<span class="ritem-txt"><span class="ritem-name">' + esc(b.name) + '</span><span class="ritem-meta">' + esc(b.category) +
       (hit ? ' · <span class="sr-only">coincide con </span>' + esc(hit) : '') + '</span></span>' + distLabel(b) + '</button></li>';
   }

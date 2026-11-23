@@ -1,16 +1,21 @@
 {
-  "name": "Nubi · Versión de prueba con datos ficticios",
+  "id": "./",
+  "name": "Nubi · Negocios de Roldanillo",
   "short_name": "Nubi",
-  "description": "Versión de prueba para descubrir negocios locales. Los negocios mostrados son datos ficticios de demostración.",
+  "description": "Descubre los negocios locales de Roldanillo: mapa, horarios, contactos y rutas a pie. Versión de prueba.",
   "lang": "es-CO",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#E9F2EC",
   "theme_color": "#16302B",
+  "categories": ["travel", "shopping", "lifestyle"],
   "icons": [
     { "src": "assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/brand/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

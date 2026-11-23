@@ -118,7 +118,7 @@
   function render(b, h) {
     var famKey = familyOf(b), fam = FAMILIES[famKey], kind = KINDS[b.kind] || KINDS.tienda, preview = !!h.preview;
     var photo = b.cover ? ' has-photo" style="background-image:url(' + b.cover + ')' : '';
-    var badge = b.logo ? '<img class="pf-logo" src="' + b.logo + '" alt="Logotipo de ' + esc(b.name) + '">' : '<span class="pf-logo pf-logo--icon">' + icon(b.icon || kind.icon, 30) + '</span>';
+    var badge = b.logo ? '<img class="pf-logo" src="' + b.logo + '" alt="Logotipo de ' + esc(b.name) + '" decoding="async">' : '<span class="pf-logo pf-logo--icon">' + icon(b.icon || kind.icon, 30) + '</span>';
     var kindLine = esc(b.kindLabel || kind.label) + ' en ' + esc(h.place) + (b.since ? ', desde ' + b.since : '');
     var dis = function (why) { return ' aria-disabled="true" data-why="' + esc(why) + '"'; };
     var contactWhy = preview ? 'En la vista previa los botones no hacen nada.' : b.demo ? 'Contacto ficticio: este negocio es de prueba.' : 'Este negocio no publicó este contacto.';

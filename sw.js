@@ -1,9 +1,9 @@
 /* Service worker mínimo de la PWA de prueba.
    Red primero para los archivos propios (siempre la versión publicada más reciente);
    la copia en caché solo se usa sin conexión. El mapa, las teselas y las fuentes externas no se guardan. */
-var CACHE = 'cerca-v20';
-var SHELL = ['./', 'index.html', 'css/styles.css?v=20', 'css/profiles.css?v=20', 'js/config.js?v=20', 'js/data.js?v=20', 'js/store.js?v=20', 'js/map.js?v=20', 'js/geo.js?v=20', 'js/routing.js?v=20', 'js/search.js?v=20', 'js/brand.js?v=20',
-  'js/profiles.js?v=20', 'js/editor.js?v=20', 'js/app.js?v=20', 'js/assistant.js?v=20', 'js/auth.js?v=20', 'js/registro.js?v=20', 'js/moderacion.js?v=20', 'js/privacidad.js?v=20','manifest.webmanifest', 'assets/brand/icon-192.png', 'assets/brand/favicon.svg'];
+var CACHE = 'cerca-v21';
+var SHELL = ['./', 'index.html', 'css/styles.css?v=21', 'css/profiles.css?v=21', 'js/config.js?v=21', 'js/data.js?v=21', 'js/store.js?v=21', 'js/map.js?v=21', 'js/geo.js?v=21', 'js/routing.js?v=21', 'js/search.js?v=21', 'js/brand.js?v=21',
+  'js/profiles.js?v=21', 'js/editor.js?v=21', 'js/app.js?v=21', 'js/assistant.js?v=21', 'js/auth.js?v=21', 'js/registro.js?v=21', 'js/moderacion.js?v=21', 'js/privacidad.js?v=21','manifest.webmanifest', 'assets/brand/icon-192.png', 'assets/brand/icon-512.png', 'assets/brand/icon-maskable-192.png', 'assets/brand/icon-maskable-512.png', 'assets/brand/apple-touch-icon.png', 'assets/brand/favicon.svg'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
