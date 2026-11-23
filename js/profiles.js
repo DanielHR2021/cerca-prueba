@@ -40,6 +40,7 @@
     chat: 'M4 18.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H8z M8.5 9.5h7 M8.5 12.5h4',
     pin: 'M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
     share: 'M12 3.5v11 M8 7.5l4-4 4 4 M5 12v7.5h14V12',
+    flag: 'M5 21V4 M5 4h11l-2 4 2 4H5',
     save: 'M6.5 3.5h11v17l-5.5-4-5.5 4z',
     clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 7v5l3 2'
   };
@@ -158,7 +159,9 @@
             return href && !preview ? '<a href="' + esc(href) + '"' + (/^https/.test(href) ? ' target="_blank" rel="noopener"' : '') + '>' + esc(lbl) + ': ' + esc(shown) + '</a>' : '<span>' + esc(lbl) + ': ' + esc(shown) + '</span>';
           }).join('') + '</dd>' : '<dd class="placeholder">Sin contacto publicado</dd>') + '</dl>' +
         (b.delivery || (b.payments || []).length ? '<p class="pf-extra">' + (b.delivery ? 'Hace domicilios. ' : '') + ((b.payments || []).length ? 'Pagos: ' + esc(b.payments.join(', ')) + ' (informativo).' : '') + '</p>' : '') +
-        (b.demo ? '<p class="demo-note"><strong>Datos de prueba.</strong> Este negocio, sus productos, precios e historia son ficticios.</p>' : '') + '</section>' +
+        (b.demo ? '<p class="demo-note"><strong>Datos de prueba.</strong> Este negocio, sus productos, precios e historia son ficticios.</p>' : '') +
+        // Reportar (solo negocios reales publicados; nunca en la vista previa ni en la demo)
+        (!preview && !b.demo && b.uid ? '<p class="pf-report"><button type="button" class="pf-report-btn" data-reportar="' + esc(b.uid) + '" data-nombre="' + esc(b.name) + '">' + icon('flag', 16) + '<span>Reportar un problema con este negocio</span></button></p>' : '') + '</section>' +
       '</div></div>';
     // La vista previa convive en el DOM con el perfil: ids distintos para no duplicarlos.
     return preview ? html.replace(/(id|aria-labelledby)="pf-/g, '$1="pv-').replace('id="profile-title"', 'id="preview-title"') : html;

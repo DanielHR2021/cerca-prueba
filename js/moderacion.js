@@ -10,7 +10,7 @@
   var C = window.CERCA_CONFIG || {};
   var $ = function (s, el) { return (el || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
-  var ACC = { crear_negocio: 'Negocio creado', nueva_revision: 'Cambios iniciados', enviar_revision: 'Enviado a revisión', retirar_revision: 'Envío retirado',
+  var ACC = { resolver_reporte: 'Reporte resuelto', aceptar_documentos: 'Autorización registrada', crear_negocio: 'Negocio creado', nueva_revision: 'Cambios iniciados', enviar_revision: 'Enviado a revisión', retirar_revision: 'Envío retirado',
     aprobar_revision: 'Aprobado', solicitar_correccion: 'Corrección pedida', rechazar_revision: 'Rechazado', suspender_negocio: 'Suspendido', reactivar_negocio: 'Reactivado',
     retirar_negocio: 'Retirado por su propietario', eliminar_borrador: 'Borrador eliminado', eliminar_negocio: 'Eliminado definitivamente' };
   var st = { admin: null, pend: [], pub: [], reg: [], nombres: {}, zonas: {}, abierta: null, msg: '', msgErr: false };
@@ -36,7 +36,25 @@
         st.ret = r[1].data.filter(function (n) { return n.estado === 'retirado'; });
         st.reg = r[2].data; st.zonas = {}; r[3].data.forEach(function (z) { st.zonas[z.id] = z.nombre; });
       });
-    }).then(pintar, function (e) { say('No se pudo cargar el panel: ' + (e.message || e), true); });
+    }).then(cargarReportes).then(pintar, function (e) { say('No se pudo cargar el panel: ' + (e.message || e), true); });
+  }
+  // Reportes (0007). Aparte y tolerante: si la migración aún no está aplicada, el resto del panel funciona igual.
+  function cargarReportes() {
+    return client().then(function (c) {
+      return c.from('reportes').select('id, negocio_id, motivo, detalle, creado_en').eq('estado', 'pendiente').order('creado_en');
+    }).then(function (r) { st.rep = r && !r.error ? (r.data || []) : null; }, function () { st.rep = null; });
+  }
+  var MOTIVO = { informacion_incorrecta: 'Información incorrecta', foto_inapropiada: 'Foto inapropiada', contenido_inapropiado: 'Contenido inapropiado',
+    suplantacion: 'Posible suplantación', negocio_inexistente: 'No existe o cerró', otro: 'Otro' };
+  function seccionReportes() {
+    if (st.rep === null || st.rep === undefined) { return '<section class="panel-card"><h2>Reportes</h2><p class="ed-hint">Los reportes se activan al aplicar la migración 0007 en el servidor.</p></section>'; }
+    return '<section class="panel-card"><h2>Reportes pendientes (' + st.rep.length + ')</h2>' + (st.rep.length ? '<ul class="reg-list">' + st.rep.map(function (x) {
+      return '<li class="reg-item"><div><strong>' + esc(st.nombres[x.negocio_id] || 'Negocio') + '</strong> <span class="reg-badge">' + esc(MOTIVO[x.motivo] || x.motivo) + '</span>' +
+        '<p class="ed-hint">' + esc(fecha(x.creado_en)) + (x.detalle ? ' · «' + esc(x.detalle) + '»' : '') + '</p></div>' +
+        '<label class="mod-mot" for="rnota-' + x.id + '">Nota interna (opcional)</label><textarea id="rnota-' + x.id + '" maxlength="300" placeholder="Ej.: Se pidió corrección al comerciante"></textarea>' +
+        '<div class="auth-acts"><button type="button" class="btn" data-mod="rep-revisado" data-id="' + x.id + '">Marcar revisado</button>' +
+        '<button type="button" class="btn btn--ghost" data-mod="rep-descartar" data-id="' + x.id + '">Descartar</button></div></li>';
+    }).join('') + '</ul><p class="ed-hint">Si el reporte es válido: suspende el negocio (sección Publicados) o pide la corrección al comerciante.</p>' : '<p>No hay reportes por revisar.</p>') + '</section>';
   }
   function rpc(nombre, args, ok) {
     say('Procesando…');
@@ -68,6 +86,7 @@
     r.innerHTML = (st.msg ? '<p class="auth-msg' + (st.msgErr ? ' is-error' : '') + '" role="alert">' + esc(st.msg) + '</p>' : '') +
       '<section class="panel-card"><h2>Pendientes de revisión (' + st.pend.length + ')</h2>' +
       (st.pend.length ? '<ul class="reg-list">' + st.pend.map(tarjetaPendiente).join('') + '</ul>' : '<p>No hay nada por revisar.</p>') + '</section>' +
+      seccionReportes() +
       '<section class="panel-card"><h2>Publicados (' + st.pub.length + ')</h2>' + (st.pub.length ? '<ul class="reg-list">' + st.pub.map(function (n) {
         return '<li class="reg-item"><div><strong>' + esc(n.nombre) + '</strong> <span class="reg-badge reg-badge--' + n.estado + '">' + (n.estado === 'suspendido' ? 'Suspendido' : 'Publicado') + '</span>' +
           (n.slug ? ' <a class="reg-link" href="#/negocio/' + esc(n.slug) + '">Ficha</a>' : '') + '</div>' +
@@ -117,6 +136,11 @@
       rpc('eliminar_negocio', { p_negocio: id, p_motivo: motivo(id) }, 'Negocio eliminado definitivamente (queda constancia en el registro).');
     }
     if (a === 'reactivar') { rpc('reactivar_negocio', { p_negocio: id }, 'Negocio reactivado.'); }
+    if (a === 'rep-revisado' || a === 'rep-descartar') {
+      var nota = ($('#rnota-' + id) || {}).value || '';
+      rpc('resolver_reporte', { p_reporte: Number(id), p_estado: a === 'rep-revisado' ? 'revisado' : 'descartado', p_nota: nota.trim() || null },
+        a === 'rep-revisado' ? 'Reporte marcado como revisado.' : 'Reporte descartado.');
+    }
     if (a === 'copia') { copia(); }
   });
 

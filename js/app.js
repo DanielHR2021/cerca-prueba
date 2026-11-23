@@ -200,7 +200,7 @@ Cerca.store.ready().then(function () {
     if (state.sel && items.map(function (b) { return b.id; }).indexOf(state.sel) === -1) { state.sel = null; }
     // Cerrar la ficha (sel = null) conserva la ruta: solo «Quitar ruta» o elegir otro negocio la quitan.
     if (state.route && state.sel && state.route.id !== state.sel) { state.route = null; map.clearRoute(); }
-    renderList(items); renderSelCard(items); renderSheet(items);
+    renderList(items); renderSelCard(items); renderSheet(items); renderLaunchEmpty();
     var vis = new Set(items.map(function (b) { return b.id; }));
     var closed = new Set(DATA.filter(function (b) { return S.openAt(b, NOW) === false; }).map(function (b) { return b.id; }));
     map.update({ visible: vis, selected: state.sel, closed: closed });
@@ -208,6 +208,20 @@ Cerca.store.ready().then(function () {
     $('#pane-list').setAttribute('aria-pressed', state.pane === 'list');
     $('#pane-map').setAttribute('aria-pressed', state.pane === 'map');
     return items;
+  }
+  /* Estado vacío del lanzamiento: todavía no hay ningún negocio publicado (distinto de «sin resultados» por un
+     filtro). Nunca se rellenan datos ficticios. Si además falló la carga y no hay copia, se dice con claridad. */
+  function renderLaunchEmpty() {
+    var box = $('#launch-empty'); if (!box) { return; }
+    var none = DATA.length === 0, sinRed = none && S.lastError && S.lastError();
+    box.hidden = !none;
+    if (!none) { return; }
+    $('#launch-empty-t').textContent = sinRed ? 'No pudimos cargar los negocios' : 'Muy pronto verás aquí los negocios de Roldanillo';
+    $('#launch-empty-text').textContent = sinRed
+      ? 'Revisa tu conexión e intenta de nuevo. El mapa sigue disponible.'
+      : 'Nubi está empezando: los primeros negocios se están registrando y cada uno pasa por una revisión antes de aparecer. Mientras tanto, puedes recorrer el mapa y ubicarte.';
+    el.empty.hidden = true;  // en la lista no se muestra «Sin resultados»: el aviso de arriba lo explica
+    $$('#chips button').forEach(function (b) { b.disabled = true; });  // filtros sin efecto mientras no haya negocios
   }
   function renderSaved() {
     var items = saved.map(byId);
@@ -270,6 +284,8 @@ Cerca.store.ready().then(function () {
     var prev = state.view;
     state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : h === '#/admin' ? 'admin' : h === '#/privacidad' ? 'privacy' : 'home';
     state.profile = b || null;
+    // Enlace compartido a un negocio que ya no está publicado (retirado, suspendido o eliminado): explicarlo.
+    if (m && !b) { toast('Ese negocio ya no está publicado en Nubi.'); }
     Object.keys(VIEWS).forEach(function (v) { $('#view-' + v).hidden = v !== state.view; });
     var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view === 'admin' || state.view === 'privacy' ? 'settings' : state.view;
     $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === navKey) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); } });

@@ -10,12 +10,12 @@
 (function () {
   'use strict';
   window.Cerca = window.Cerca || {};
-  var VERSION = '2026-11-22-borrador';
+  var VERSION = '2026-11-23-v1';
   var $ = function (s, el) { return (el || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
-  var RESP = 'el responsable de Nubi (datos de contacto por publicar antes del lanzamiento)';
+  var RESP = 'Daniel Nicolás Herrera Roldán (persona natural; Nubi es su marca), herreraroldand@gmail.com, +57 318 556 4988';
 
-  var AVISO = '<p><strong>Aviso de privacidad.</strong> Para explorar Nubi no te pedimos datos. Si entras con Google para registrar un negocio, recibimos tu correo, nombre y foto de perfil para identificarte y dejar constancia de tus cambios. Tu ubicación solo se usa en tu teléfono (no la guardamos) y, si pides una ruta a pie, se envía al servicio de rutas de OpenStreetMap. Puedes conocer, corregir o pedir la eliminación de tus datos. <a href="#/privacidad">Política completa y términos</a>.</p>';
+  var AVISO = '<p><strong>Aviso de privacidad.</strong> Para explorar Nubi no te pedimos datos. Si entras con Google para registrar un negocio, recibimos tu correo, nombre y foto de perfil para identificarte y dejar constancia de tus cambios. Tu ubicación solo se usa en tu teléfono (no la guardamos) y, si pides una ruta a pie, se envía al servicio de rutas de OpenStreetMap. Puedes conocer, corregir o pedir la eliminación de tus datos. Responsable: Daniel Nicolás Herrera Roldán (Nubi), herreraroldand@gmail.com. <a href="privacidad.html">Política completa</a> · <a href="terminos.html">Términos</a>.</p>';
 
   var POLITICA = [
     ['Quién es el responsable', 'Nubi, plataforma de negocios locales que empieza en Roldanillo (Valle del Cauca). Responsable: ' + RESP + '.'],
@@ -24,8 +24,8 @@
     ['Si tienes cuenta', 'Al entrar con Google recibimos tu correo, nombre, foto de perfil y un identificador; el servicio de cuentas guarda además fechas de acceso y registros técnicos (pueden incluir tu IP). No recibimos tu contraseña. Los usamos para identificarte, permitirte administrar tus negocios, evitar abusos y dejar constancia de quién hizo cada cambio.'],
     ['Tus negocios', 'Lo que apruebe la administración se publica: nombre, descripción, horarios, contactos que elijas, ofertas, ubicación (punto o solo zona general) y fotos. Las fotos se reducen en tu teléfono (se quitan sus metadatos, incluida la ubicación de la cámara) y al publicarse son públicas. Publica solo datos tuyos o autorizados; no publiques tu dirección de vivienda.'],
     ['Con quién se comparte', 'Supabase (base de datos, cuentas y fotos; EE. UU.), Google (inicio de sesión), GitHub Pages (alojamiento; EE. UU.), OpenFreeMap/OpenStreetMap (mapa), FOSSGIS (rutas, si las pides), Google Fonts, jsDelivr y unpkg (programas y tipografías). No vendemos datos, no hay publicidad ni analítica, ni inteligencia artificial con tus datos.'],
-    ['Tus derechos', 'Conocer, actualizar, rectificar, pedir prueba de tu autorización, revocarla y pedir la supresión de tus datos, y quejarte ante la Superintendencia de Industria y Comercio. En la app puedes corregir o retirar tus negocios y eliminar tu cuenta (Ajustes → Cuenta). Para lo demás, escribe al canal del responsable (se publicará antes del lanzamiento).'],
-    ['Conservación', 'Los negocios se muestran mientras estén publicados. Al eliminar un negocio o tu cuenta se borran sus datos; el registro de acciones conserva el nombre del negocio, la fecha y el motivo como constancia, sin tus datos de cuenta. Las copias de seguridad se guardan en privado.'],
+    ['Tus derechos', 'Conocer, actualizar, rectificar, pedir prueba de tu autorización, revocarla y pedir la supresión de tus datos, y quejarte ante la Superintendencia de Industria y Comercio. En la app puedes corregir o retirar tus negocios y eliminar tu cuenta (Ajustes → Cuenta). Para lo demás, escribe a herreraroldand@gmail.com con el asunto «Datos personales – Nubi»: las consultas se responden en máximo 10 días hábiles y los reclamos en máximo 15.'],
+    ['Conservación', 'Los negocios se muestran mientras estén publicados. Al eliminar un negocio o tu cuenta se borran sus datos; el registro de acciones conserva el nombre del negocio, la fecha y el motivo como constancia, sin tus datos de cuenta. Los reportes de contenido (motivo y detalle, sin datos de contacto) solo los ve la administración. Las copias de seguridad se guardan en privado.'],
     ['Seguridad', 'Reglas en la base de datos impiden que alguien modifique lo ajeno o vea lo pendiente; la conexión es cifrada. Ningún sistema es infalible: si un incidente te afecta, te avisaremos.'],
     ['Menores de edad', 'Nubi no está dirigida a menores; solo personas mayores de edad registran negocios.']
   ];
@@ -40,6 +40,7 @@
   function pagina() {
     var v = $('#privacidad'); if (!v) { return; }
     v.innerHTML = '<p class="notice">Borrador pendiente de revisión jurídica · versión ' + esc(VERSION) + '. No es la versión definitiva.</p>' +
+      '<section class="panel-card"><h2>Documentos completos</h2><p><a href="privacidad.html">Política de tratamiento de datos</a> · <a href="terminos.html">Términos y condiciones</a> · <a href="eliminar-cuenta.html">Eliminar tu cuenta y tus datos</a></p><p>Contacto: <a href="mailto:herreraroldand@gmail.com">herreraroldand@gmail.com</a> · +57 318 556 4988</p></section>' +
       '<section class="panel-card">' + AVISO + '</section>' +
       '<section class="panel-card"><h2 id="politica">Política de tratamiento de datos</h2>' + POLITICA.map(function (p) { return '<h3>' + esc(p[0]) + '</h3><p>' + esc(p[1]) + '</p>'; }).join('') + '</section>' +
       '<section class="panel-card"><h2 id="terminos">Términos de uso</h2><ol>' + TERMINOS.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></section>';
@@ -57,8 +58,8 @@
   function tarjeta(e) {
     if (e.distinta) { return '<section class="panel-card priv-card" id="priv-card"><p class="auth-msg is-error" role="alert">Los documentos cambiaron. Recarga la app para leer la versión nueva antes de continuar.</p></section>'; }
     return '<section class="panel-card priv-card" id="priv-card" aria-labelledby="priv-t"><h2 id="priv-t" class="reg-h">Antes de registrar tu negocio</h2>' + AVISO +
-      '<label class="priv-check"><input type="checkbox" id="priv-datos"> <span>Autorizo el tratamiento de mis datos personales para las finalidades descritas en la <a href="#/privacidad">Política de tratamiento de datos</a>.</span></label>' +
-      '<label class="priv-check"><input type="checkbox" id="priv-terminos"> <span>Acepto los <a href="#/privacidad">Términos de uso</a> y declaro que soy mayor de edad.</span></label>' +
+      '<label class="priv-check"><input type="checkbox" id="priv-datos"> <span>Autorizo el tratamiento de mis datos personales a Daniel Nicolás Herrera Roldán, responsable de Nubi, para las finalidades descritas en la <a href="privacidad.html">Política de tratamiento de datos</a>, incluida su transferencia a los proveedores fuera de Colombia que allí se indican.</span></label>' +
+      '<label class="priv-check"><input type="checkbox" id="priv-terminos"> <span>Acepto los <a href="terminos.html">Términos y condiciones</a> y declaro que soy mayor de edad.</span></label>' +
       '<p class="auth-msg" id="priv-msg" hidden></p>' +
       '<div class="auth-acts"><button type="button" class="btn" data-priv="aceptar">Continuar</button></div>' +
       '<p class="ed-hint">Queda constancia de la fecha y la versión. Puedes revocarla eliminando tu cuenta (Ajustes → Cuenta).</p></section>';

@@ -7,8 +7,8 @@
 <meta name="description" content="Descubre negocios locales de Roldanillo. Versión de prueba.">
 <script>/* aplica el tema antes de pintar para evitar un destello */(function(){var t;try{t=localStorage.getItem('cerca.theme')}catch(e){}if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t})();</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700&family=Figtree:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="css/styles.css?v=21">
-<link rel="stylesheet" href="css/profiles.css?v=21">
+<link rel="stylesheet" href="css/styles.css?v=22">
+<link rel="stylesheet" href="css/profiles.css?v=22">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#16302B">
 <link rel="manifest" href="manifest.webmanifest">
@@ -57,6 +57,12 @@
     <button type="button" id="pane-list" aria-pressed="false">Lista</button>
     <button type="button" id="pane-map" aria-pressed="true">Mapa</button>
   </div>
+
+  <section class="launch-empty" id="launch-empty" aria-labelledby="launch-empty-t" hidden>
+    <p class="launch-empty-t" id="launch-empty-t">Muy pronto verás aquí los negocios de Roldanillo</p>
+    <p id="launch-empty-text">Nubi está empezando: los primeros negocios se están registrando y cada uno pasa por una revisión antes de aparecer. Mientras tanto, puedes recorrer el mapa y ubicarte.</p>
+    <a class="btn" href="#/mi-negocio">¿Tienes un negocio? Regístralo gratis</a>
+  </section>
 
   <main id="main" class="discover" data-pane="map">
     <section class="panel" aria-label="Resultados">
@@ -249,22 +255,23 @@
   </form>
 </section>
 
-<script src="js/config.js?v=21"></script>
-<script src="js/data.js?v=21"></script>
-<script src="js/store.js?v=21"></script>
-<script src="js/map.js?v=21"></script>
-<script src="js/geo.js?v=21"></script>
-<script src="js/routing.js?v=21"></script>
-<script src="js/search.js?v=21"></script>
-<script src="js/brand.js?v=21"></script>
-<script src="js/profiles.js?v=21"></script>
-<script src="js/editor.js?v=21"></script>
-<script src="js/app.js?v=21"></script>
-<script src="js/assistant.js?v=21"></script>
-<script src="js/auth.js?v=21"></script>
-<script src="js/registro.js?v=21"></script>
-<script src="js/moderacion.js?v=21"></script>
-<script src="js/privacidad.js?v=21"></script>
+<script src="js/config.js?v=22"></script>
+<script src="js/data.js?v=22"></script>
+<script src="js/store.js?v=22"></script>
+<script src="js/map.js?v=22"></script>
+<script src="js/geo.js?v=22"></script>
+<script src="js/routing.js?v=22"></script>
+<script src="js/search.js?v=22"></script>
+<script src="js/brand.js?v=22"></script>
+<script src="js/profiles.js?v=22"></script>
+<script src="js/editor.js?v=22"></script>
+<script src="js/app.js?v=22"></script>
+<script src="js/assistant.js?v=22"></script>
+<script src="js/auth.js?v=22"></script>
+<script src="js/registro.js?v=22"></script>
+<script src="js/moderacion.js?v=22"></script>
+<script src="js/privacidad.js?v=22"></script>
+<script src="js/reportes.js?v=22"></script>
 <script>/* PWA: registra el service worker si el navegador lo admite (solo https o localhost) */if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}</script>
 </body>
 </html>
