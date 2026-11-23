@@ -25,7 +25,7 @@
   function say(m, isErr) { st.msg = m || ''; st.msgErr = !!isErr; var n = $('#reg-msg'); if (n) { n.textContent = st.msg; n.className = 'auth-msg' + (isErr ? ' is-error' : ''); n.hidden = !st.msg; } }
   function errText(e) {
     var m = (e && (e.message || e.error_description)) || '';
-    if (/Límite|Ya hay una revisión|Datos incompletos|No autorizado|Municipio|Nombre/.test(m)) { return m; }
+    if (/Límite|Ya hay una revisión|Datos incompletos|No autorizado|Municipio|Nombre|autoriza el tratamiento/.test(m)) { return m; }
     if (navigator.onLine === false) { return 'Sin conexión. Tus cambios quedan en este dispositivo y se guardarán al volver la conexión.'; }
     return 'No se pudo completar la acción. Inténtalo de nuevo.' + (m ? ' (' + m + ')' : '');
   }
@@ -151,6 +151,7 @@
     st.errors = validar(st.datos);
     var ks = Object.keys(st.errors);
     if (ks.length) { st.step = pasoDeError(ks[0]); pintar(); say('Falta información obligatoria o hay datos por corregir.', true); return; }
+    if (falta()) { say('Antes de enviar, autoriza el tratamiento de datos y acepta los términos en «Mis negocios». Tus cambios quedan guardados.', true); return; }
     say('Enviando a revisión…');
     guardar(true).then(client).then(function (c) { return c.rpc('enviar_revision', { p_revision: st.rev.id }); }).then(function (r) {
       if (r.error) { throw r.error; }
@@ -186,7 +187,13 @@
       say('Eliminado.'); return refrescar();
     }).catch(function (e) { say(errText(e), true); });
   }
-  function refrescar() { return cargarLista().then(function (l) { st.negocios = l; if (st.view === 'lista') { pintar(); } }).catch(function (e) { say(errText(e), true); }); }
+  // L02: además de la lista, si el servidor exige una versión vigente de los documentos, si ya se aceptó.
+  function consentimiento() {
+    if (!Cerca.privacidad) { return Promise.resolve(null); }
+    return client().then(Cerca.privacidad.estado).catch(function () { return null; });
+  }
+  function falta() { return st.consent && (!st.consent.aceptada || st.consent.distinta); }
+  function refrescar() { return Promise.all([cargarLista(), consentimiento()]).then(function (r) { st.negocios = r[0]; st.consent = r[1]; if (st.view === 'lista') { pintar(); } }).catch(function (e) { say(errText(e), true); }); }
 
   /* ---------- Pintar ---------- */
   function campo(id, label, html, help, err) {
@@ -196,7 +203,7 @@
   function val(k) { return esc(st.datos[k] || ''); }
   function pintarLista() {
     var l = st.negocios;
-    return '<h2 class="reg-h">Mis negocios</h2>' +
+    return (falta() ? Cerca.privacidad.tarjeta(st.consent) : '') + '<h2 class="reg-h">Mis negocios</h2>' +
       (l.length ? '<ul class="reg-list">' + l.map(function (n) {
         var a = n.abierta, est = a ? ESTADO[a.estado] : ESTADO[n.estado] || n.estado;
         var acts = a && /^(borrador|requiere_correccion)$/.test(a.estado) ? '<button type="button" class="btn" data-reg="abrir" data-id="' + n.id + '">Continuar</button>' :
@@ -215,8 +222,9 @@
           (n.estado === 'retirado' ? '<p class="ed-hint">No se muestra en Nubi. Si quieres que se borre por completo, escríbele a la administración; si quieres volver, usa «Volver a publicar».</p>' : '') +
           '</div><div class="auth-acts">' + acts + '</div></li>';
       }).join('') + '</ul>' : '<p>Todavía no tienes negocios registrados.</p>') +
+      (falta() ? '<p class="ed-hint">Para registrar un negocio o enviar cambios, primero completa «Antes de registrar tu negocio».</p>' :
       '<form class="reg-new" id="reg-new-form">' + campo('reg-nuevo', 'Registrar un negocio nuevo', '<input id="reg-nuevo" maxlength="60" autocomplete="organization" placeholder="Ej.: Panadería La Espiga">', 'Después completarás la información en 6 pasos. Puedes guardar y volver cuando quieras.') +
-      '<button type="submit" class="btn">Empezar</button></form>';
+      '<button type="submit" class="btn">Empezar</button></form>');
   }
   function stepper() {
     return '<ol class="reg-steps" aria-label="Pasos">' + STEPS.map(function (s, i) {

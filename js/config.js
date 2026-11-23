@@ -24,9 +24,10 @@ window.CERCA_CONFIG = {
   maplibreVersion: '4.7.1',
   maplibreCdns: ['https://unpkg.com/maplibre-gl@{v}/dist/', 'https://cdn.jsdelivr.net/npm/maplibre-gl@{v}/dist/'],
   mapTimeoutMs: 12000,
-  // Fuente de los negocios para js/store.js: 'demo' | 'supabase' | 'mixto' (aprobados en Supabase + demostración;
-  // si el servidor falla o tarda más de 6 s, queda solo la demo). Para probar: ?datos=demo|supabase|mixto
-  dataSource: 'mixto',
+  // Fuente de los negocios para js/store.js: 'demo' | 'supabase' | 'mixto' (aprobados + demostración).
+  // L02 (fundador, 2026-11-22, D16): solo negocios reales aprobados. Si el servidor falla, se usa la última lista
+  // guardada en el dispositivo (≤ 7 días). Los 10 ficticios quedan solo para pruebas: ?datos=demo (o ?datos=mixto).
+  dataSource: 'supabase',
   // Supabase (Etapa 1, T5): PROYECTO DE PRUEBAS «nubi-pruebas». La clave «publishable» está hecha para el
   // navegador: la protección real son las reglas por fila (RLS) de db/migraciones. La clave de servicio (privada) NUNCA va aquí.
   supabase: {

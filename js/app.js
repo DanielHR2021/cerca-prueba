@@ -257,21 +257,21 @@ Cerca.store.ready().then(function () {
     var b = state.profile; if (!b) { return; }
     if (btn.dataset.pfAct === 'map') { showMap(b.id); }
     if (btn.dataset.pfAct === 'share') {
-      var url = location.href.split('#')[0] + '#/negocio/' + b.slug, data = { title: b.name, text: b.name + ' en ' + C.municipioNombre + ' (negocio de prueba)', url: url };
+      var url = location.href.split('#')[0] + '#/negocio/' + b.slug, data = { title: b.name, text: b.name + ' en ' + C.municipioNombre + (b.demo ? ' (negocio de prueba)' : ''), url: url };
       if (navigator.share) { navigator.share(data).catch(function () { /* el usuario canceló */ }); }
       else if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast('Enlace copiado.'); }, function () { toast('Copia este enlace: ' + url); }); }
       else { toast('Copia este enlace: ' + url); }
     }
   }
-  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', draft: 'Vista previa de tu negocio', admin: 'Moderación' };
+  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', draft: 'Vista previa de tu negocio', admin: 'Moderación', privacy: 'Privacidad y términos' };
   function route() {
     var h = location.hash || '#/';
     var m = /^#\/negocio\/([\w-]+)$/.exec(h), b = m && S.resolve(m[1]); // slug estable; los números antiguos de la demo siguen funcionando
     var prev = state.view;
-    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : h === '#/admin' ? 'admin' : 'home';
+    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : h === '#/admin' ? 'admin' : h === '#/privacidad' ? 'privacy' : 'home';
     state.profile = b || null;
     Object.keys(VIEWS).forEach(function (v) { $('#view-' + v).hidden = v !== state.view; });
-    var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view === 'admin' ? 'settings' : state.view;
+    var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view === 'admin' || state.view === 'privacy' ? 'settings' : state.view;
     $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === navKey) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); } });
     document.title = (b ? b.name : VIEWS[state.view]) + ' · ' + C.appName;
     if (state.view === 'profile') { renderProfile(b); }

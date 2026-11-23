@@ -278,3 +278,11 @@
   .ed-bar { padding: 10px 12px; gap: 8px; } .ed-status { flex: 1 0 100%; font-size: 13px; }
   .ed-bar .btn { flex: 1 1 0; min-width: 0; padding: 0 10px; line-height: 1.15; text-align: center; }
 }
+
+/* L02 · Privacidad y cuenta */
+.priv-card a, #privacidad a { color: inherit; text-decoration: underline; }
+.priv-check { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; min-height: 40px; line-height: 1.4; }
+.priv-check input { width: 22px; height: 22px; flex: none; margin-top: 1px; accent-color: var(--ink); }
+#privacidad h3 { margin: 14px 0 4px; font-size: 1rem; }
+#privacidad p, #privacidad li { overflow-wrap: anywhere; }
+.btn--danger { background: transparent; color: var(--closed); border: 2px solid var(--closed); }

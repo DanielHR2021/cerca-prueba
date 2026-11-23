@@ -168,7 +168,8 @@
     box.hidden = state.status === 'unavailable';
     var s = state.status, isErr = s === 'error' || /no |límite|válido|Sin conexión|Espera|terminó|Cancelaste|todavía/.test(state.message);
     var msg = state.message ? '<p class="auth-msg' + (isErr ? ' is-error' : '') + '" role="alert">' + esc(state.message) + '</p>' : '';
-    var note = '<p class="ed-hint">Para explorar Nubi no necesitas cuenta. Entrar solo hace falta para registrar o administrar un negocio. Entorno de prueba: entrar no publica nada.</p>';
+    var note = '<p class="ed-hint">Para explorar Nubi no necesitas cuenta. Entrar solo hace falta para registrar o administrar un negocio. Entorno de prueba: entrar no publica nada.</p>' +
+      '<p class="ed-hint">Al entrar con Google recibimos tu correo, nombre y foto de perfil para identificarte. <a href="#/privacidad">Aviso de privacidad y términos</a>.</p>';
     if (s === 'signed_in') {
       var u = state.user, via = u.provider === 'google' ? ' con Google' : '';
       body.innerHTML = '<p>Sesión iniciada' + via + ' como <strong>' + esc(u.name ? u.name + ' (' + u.email + ')' : u.email) + '</strong>.</p>' + msg +

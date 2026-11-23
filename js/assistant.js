@@ -58,11 +58,11 @@
 
   /* ---------- Temas ---------- */
   var T = {
-    find: function () { bot('Escribe abajo lo que necesitas, por ejemplo «pan», «copias» o «arreglar celular». Busco entre los negocios de prueba de ' + esc(PLACE) + '.'); input.focus(); },
+    find: function () { bot('Escribe abajo lo que necesitas, por ejemplo «pan», «copias» o «arreglar celular». Busco entre los negocios de ' + esc(PLACE) + '.'); input.focus(); },
     cats: function () { bot('Estas son las categorías. Toca una para ver sus negocios.', { acts: A.categories.map(function (c) { return act(c + ' (' + count(c) + ')', nav(function () { A.setCategory(c); })); }) }); },
     open: function () {
       var l = A.openNowList();
-      if (!l.length) { mood('empty'); bot('Según su horario, ahora mismo ningún negocio de prueba está abierto.', { acts: [act('Ver todos', nav(function () { A.setCategory('Todos'); }))] }); return; }
+      if (!l.length) { mood('empty'); bot('Según su horario, ahora mismo ningún negocio está abierto.', { acts: [act('Ver todos', nav(function () { A.setCategory('Todos'); }))] }); return; }
       mood('discover');
       bot('Según su horario y la hora de Colombia, ' + (l.length === 1 ? 'hay 1 negocio abierto' : 'hay ' + l.length + ' negocios abiertos') + '.', { html: results(l.slice(0, 3)), acts: [act('Ver todos los abiertos', nav(A.openNow))] });
     },
@@ -70,15 +70,15 @@
       bot('Cada marcador es un negocio y su color indica la categoría. Los marcadores tenues están cerrados ahora. Toca uno para ver su tarjeta, pellizca o usa + y − para acercar, y toca «' + esc(PLACE) + '» para volver al centro.',
         { acts: [act('Abrir el mapa', nav(function () { A.showMap(null); })), act('Volver al centro', nav(A.home))] });
     },
-    owner: function () { bot('El registro de negocios todavía no está abierto. Ya puedes ver qué datos vas a necesitar y probar cómo se vería tu tarjeta.', { acts: [act('Ir a Tu negocio', nav(function () { A.go('#/mi-negocio'); })), act('¿Cuánto cuesta?', ownerCost)] }); },
+    owner: function () { bot('Para registrar tu negocio, entra en «Negocio» con tu cuenta de Google y completa los 6 pasos. La administración lo revisa antes de publicarlo.', { acts: [act('Ir a Tu negocio', nav(function () { A.go('#/mi-negocio'); })), act('¿Cuánto cuesta?', ownerCost)] }); },
     faq: function () { bot('Preguntas frecuentes:', { acts: FAQ.map(function (f) { return act(f.q, function () { answer(f); }); }) }); },
     saved: function () { var n = A.saved().length; bot(n ? 'Tienes ' + n + (n === 1 ? ' negocio guardado' : ' negocios guardados') + '.' : 'Todavía no tienes negocios guardados.', { acts: [act('Ver guardados', nav(function () { A.go('#/guardados'); }))] }); }
   };
-  function ownerCost() { bot('Esta versión de prueba no tiene pagos ni suscripciones. Las condiciones del registro se definirán antes de abrirlo.'); }
+  function ownerCost() { bot('Esta versión de prueba no tiene pagos ni suscripciones.'); }
   function themeAct() { A.toggleTheme(); bot('Listo, ahora usas el tema ' + (A.theme() === 'dark' ? 'oscuro' : 'claro') + '.'); }
 
   var FAQ = [
-    { q: '¿Los negocios son reales?', k: /\breal|ficti|de verdad|de prueba|demo/, a: 'No. Esta es una versión de prueba: todos los negocios, teléfonos y direcciones son ficticios.' },
+    { q: '¿Los negocios son reales?', k: /\breal|ficti|de verdad|de prueba|demo/, a: 'Sí. Los negocios los registran sus dueños y la administración los revisa antes de publicarlos. Si un dato está mal, el negocio puede corregirlo desde su cuenta.' },
     { q: '¿Necesito una cuenta?', k: /cuenta|iniciar sesion|login|contrasena|registrarme/, a: 'No. Puedes explorar y guardar negocios sin registrarte. Las cuentas todavía no existen.' },
     { q: '¿Cómo guardo un negocio?', k: /guard|favorit/, a: 'Toca el marcador con forma de cinta en una tarjeta o en el perfil del negocio. Tus guardados quedan solo en este dispositivo.', acts: function () { return [act('Ver guardados', nav(function () { A.go('#/guardados'); }))]; } },
     { q: '¿Qué significa «Abierto ahora»?', k: /significa abierto|abierto ahora que|como sabe.*abierto|horario/, a: 'Comparamos la hora actual de Colombia con el horario publicado por cada negocio. Si un negocio cambia su horario, puede no coincidir.' },
@@ -119,7 +119,7 @@
     var r = Cerca.search.rank(A.data, text), l = r.items; // la misma búsqueda que el buscador principal
     if (!l.length) {
       mood('empty', 2600);
-      bot('No encontré «' + esc(text) + '» entre los negocios de prueba. Prueba con otra palabra o mira las categorías.', { acts: [act('Ver categorías', T.cats), act('Preguntas frecuentes', T.faq)] });
+      bot('No encontré «' + esc(text) + '» entre los negocios. Prueba con otra palabra o mira las categorías.', { acts: [act('Ver categorías', T.cats), act('Preguntas frecuentes', T.faq)] });
       return;
     }
     mood('discover');
@@ -147,7 +147,7 @@
     } else if (v === 'owner') {
       bot('¿Tienes un negocio en ' + esc(PLACE) + '? Te cuento cómo va el registro.', { acts: [
         act('¿Qué necesito?', function () { bot('Nombre y categoría, ubicación, horario, un contacto, una foto y una frase corta. Puedes probar la vista previa de tu tarjeta en esta misma página.'); }),
-        act('¿Cuándo abre el registro?', function () { bot('Todavía no tiene fecha. Por ahora la plataforma está en pruebas con negocios ficticios.'); }),
+        act('¿Cómo registro mi negocio?', function () { bot('Entra en «Negocio» con tu cuenta de Google, completa los 6 pasos y envíalo. La administración lo revisa antes de publicarlo.'); }),
         act('¿Cuánto cuesta?', ownerCost)
       ] });
     } else if (v === 'settings') {
