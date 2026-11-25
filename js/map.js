@@ -82,6 +82,29 @@
     };
   }
 
+  /* Mapa con los colores de la marca (variables --mb-* del tema activo): calles blancas sobre menta,
+     agua y parques pastel, y sin los íconos de comercios del mapa base (no son negocios de Nubi y
+     compiten con nuestros puntos). Solo pinta capas existentes: si el estilo cambia, lo desconocido queda igual. */
+  function brandMap(map) {
+    var cs = getComputedStyle(document.documentElement), tok = function (k) { return cs.getPropertyValue('--mb-' + k).trim(); };
+    if (!tok('land')) { return; }
+    var set = function (id, prop, val) { try { map.setPaintProperty(id, prop, val); } catch (e) { /* capa sin esa propiedad */ } };
+    ((map.getStyle() || {}).layers || []).forEach(function (l) {
+      var sl = l['source-layer'] || '', id = l.id;
+      if (l.type === 'background') { set(id, 'background-color', tok('land')); return; }
+      if (sl === 'poi' || /shield/.test(id)) { try { map.setLayoutProperty(id, 'visibility', 'none'); } catch (e) { /* sin layout */ } return; }
+      if (l.type === 'fill' && sl === 'water') { set(id, 'fill-color', tok('water')); return; }
+      if (l.type === 'line' && sl === 'waterway') { set(id, 'line-color', tok('water')); return; }
+      if (l.type === 'fill' && (sl === 'park' || (sl === 'landcover' && /grass|wood|park|wetland/.test(id)))) { set(id, 'fill-color', tok('park')); set(id, 'fill-opacity', 1); return; }
+      if (l.type === 'fill' && sl === 'landuse') { set(id, 'fill-color', tok('land')); return; }
+      if (sl === 'building') { set(id, l.type === 'fill-extrusion' ? 'fill-extrusion-color' : 'fill-color', tok('building')); return; }
+      if (l.type === 'line' && sl === 'transportation' && !/rail|ferry|aeroway|path|pier/.test(id)) {
+        set(id, 'line-color', /casing/.test(id) ? tok('casing') : tok('road')); return;
+      }
+      if (l.type === 'symbol' && l.layout && l.layout['text-field']) { set(id, 'text-color', tok('label')); set(id, 'text-halo-color', tok('land')); }
+    });
+  }
+
   /* Estilo según el tema; ?style= fija un estilo y desactiva el cambio por tema. */
   function styleFor(c, theme) { return (!c.styleLocked && theme === 'dark' && c.mapStyleDark) ? c.mapStyleDark : c.mapStyleUrl; }
   function themeNow() { return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
@@ -121,7 +144,7 @@
     /* styleReady: el estilo terminó de cargar. No se usa map.isStyleLoaded(), que devuelve false
        mientras se descargan teselas (justo después de mover el mapa o cambiar de tema). */
     var user = null, userMarker = null, ACC = 'nubi-user-acc', styleReady = false;
-    map.on('style.load', function () { styleReady = true; });
+    map.on('style.load', function () { styleReady = true; brandMap(map); });
     function accColor() { return getComputedStyle(document.documentElement).getPropertyValue('--geo').trim() || '#1C6790'; }
     function drawAccuracy() {
       if (!user || !styleReady) { return; }

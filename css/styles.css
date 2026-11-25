@@ -12,9 +12,9 @@
   --strong: #16302B; --on-strong: #FFFFFF; --accent: #F2A33A; --on-accent: #16302B;
   --hover: #F1F7F3; --hover-chip: #DCEBE2; --sel-bg: #EAF4EE; --sel-ring: #16302B; --pin-glow: none;
   /* mapa esquemático */
-  --mb-land: #E3EFE7; --mb-water: #BFE0EE; --mb-park: #CDE6D4; --mb-road: #FFFFFF; --mb-road2: #FFFFFF; --mb-label: #3E5A52;
+  --mb-land: #E3EFE7; --mb-water: #BFE0EE; --mb-park: #CDE6D4; --mb-road: #FFFFFF; --mb-road2: #FFFFFF; --mb-label: #3E5A52; --mb-casing: #D3E4DA; --mb-building: #DCEBE2;
   /* marca Nubi (mascota Dúo y logotipo) */
-  --nb-body: #A8D68A; --nb-lobe: #F2A33A; --nb-face: #16302B; --nb-muted: #4A655D; --nb-rose: #F0A6B8; --nb-sky: #8CC6E3;
+  --nb-body: #A8D68A; --nb-lobe: #F2A33A; --nb-face: #16302B; --nb-muted: #4A655D; --nb-rose: #F0A6B8; --nb-sky: #8CC6E3; --nb-bubble: #FFFFFF; --nb-bubble-line: #CFE3EC;
   --geo: #1C6790; /* tu ubicación (Módulo 01): azul «cielo» de la paleta de perfiles */
   color-scheme: light;
 }
@@ -24,8 +24,8 @@
   --strong: #FFD47A; --on-strong: #0F1A22; --accent: #FFD47A; --on-accent: #0F1A22;
   --hover: #1F3340; --hover-chip: #223A47; --sel-bg: #1F3340; --sel-ring: #FFFFFF;
   --pin-glow: 0 0 0 6px rgba(255,212,122,.20), 0 0 24px rgba(255,212,122,.55);
-  --mb-land: #12202A; --mb-water: #14384A; --mb-park: #143028; --mb-road: #1F3643; --mb-road2: #1B303C; --mb-label: #7FA39A;
-  --nb-lobe: #FFD47A; --nb-face: #0F1A22; --nb-muted: #9DB3AD;
+  --mb-land: #12202A; --mb-water: #14384A; --mb-park: #143028; --mb-road: #1F3643; --mb-road2: #1B303C; --mb-label: #7FA39A; --mb-casing: #2A3E49; --mb-building: #17262F;
+  --nb-lobe: #FFD47A; --nb-face: #0F1A22; --nb-muted: #9DB3AD; --nb-bubble: #EAF2EF; --nb-bubble-line: #9DB3AD;
   --geo: #8CC6E3;
   color-scheme: dark;
 }
@@ -114,14 +114,19 @@ h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-
 .maplibregl-ctrl-top-right { top: 4px; right: 4px; }
 /* Zoom del mapa con objetivo táctil de 40 px (MapLibre trae 29 px) */
 .mapwrap .maplibregl-ctrl-group button { width: 40px; height: 40px; }
-.pin { border: 0; background: transparent; padding: 8px; -webkit-tap-highlight-color: transparent; }
+/* Punto de lugar (marca: «punto flotante»). Una esfera con anillo blanco que flota sobre su sombra;
+   la sombra marca el lugar exacto (el marcador se ancla abajo). Nunca una gota con punta. */
+.pin { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: transparent; padding: 8px 8px 4px; -webkit-tap-highlight-color: transparent; }
 .pin--svg { position: absolute; transform: translate(-50%, -100%); }
-.pin .drop { display: block; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; background: var(--pin); border: 3px solid #fff; box-shadow: 0 3px 8px rgba(22,48,43,.28), var(--pin-glow); transform: rotate(-45deg); transition: transform .15s; }
-.pin.is-closed .drop { box-shadow: 0 3px 8px rgba(22,48,43,.28); }
-.pin.is-sel .drop { border-color: var(--sel-ring); transform: rotate(-45deg) scale(1.25); }
+.pin .drop { position: relative; display: block; width: 24px; height: 24px; border-radius: 50%; background: var(--pin); border: 3px solid #fff; box-shadow: 0 4px 10px rgba(22,48,43,.22), var(--pin-glow); transition: transform .2s cubic-bezier(.23, 1, .32, 1); }
+.pin .drop::before { content: ''; position: absolute; left: 3px; top: 3px; width: 7px; height: 4.5px; border-radius: 50%; background: #fff; opacity: .5; transform: rotate(-30deg); }
+.pin::after { content: ''; width: 12px; height: 4px; border-radius: 50%; background: rgba(22,48,43,.22); transition: transform .2s cubic-bezier(.23, 1, .32, 1); }
+.pin.is-closed .drop { box-shadow: 0 4px 10px rgba(22,48,43,.22); }
+.pin.is-sel .drop { border-color: var(--sel-ring); transform: translateY(-3px) scale(1.25); }
+.pin.is-sel::after { transform: scale(.8); }
 .pin.is-closed { opacity: .55; }
 .pin.is-closed.is-sel { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { .pin .drop { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pin .drop, .pin::after { transition: none; } }
 .selcard { position: absolute; left: 16px; bottom: 16px; width: 340px; max-width: calc(100% - 32px); padding: 18px; background: var(--surface); border-radius: 24px; box-shadow: 0 8px 28px rgba(22,48,43,.16); display: flex; flex-direction: column; gap: 8px; z-index: 5; }
 .selcard h3 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 21px; }
 .selcard p { margin: 0; }
@@ -190,7 +195,8 @@ h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-
 .dock:focus-visible { outline: none; } .dock:focus-visible .dock-fig { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 @media (max-width: 1024px) {
-  body { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+  /* 92 px de barra + 30 px que la mascota sobresale por encima: el final de cada página queda visible */
+  body { padding-bottom: calc(124px + env(safe-area-inset-bottom)); }
   .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0; gap: 0; align-items: flex-end; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
   /* fondo con un hueco circular donde encaja la mascota (como el punto de Encaje) */
   .nav::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(var(--line), var(--line)) top / 100% 1px no-repeat, var(--surface);
@@ -264,6 +270,7 @@ h1 { margin: 0 0 14px; font-family: var(--font-display); font-weight: 700; font-
 .notice { margin: 0; padding: 14px 18px; border-radius: var(--r-md); background: var(--moved-bg); color: var(--moved-fg); font-weight: 500; }
 .page-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: start; }
 .list--page { background: var(--surface); border-radius: var(--r-lg); padding: 8px; overflow: visible; }
+.list--page:empty { display: none; } /* sin guardados no se dibuja una barra vacía sobre el aviso */
 .page-empty { background: var(--surface); border-radius: var(--r-lg); padding: 28px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .page-empty p { margin: 0; }
 .checklist { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }

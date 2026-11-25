@@ -32,7 +32,7 @@
 /* Acciones rápidas */
 .pf-actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .pf-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 74px; padding: 10px 4px; border: 0; border-radius: var(--r);
-  background: var(--pt); color: var(--pi); font-weight: 600; font-size: 13px; transition: transform .12s ease, background-color .15s; }
+  background: var(--pt); color: var(--pi); font-weight: 600; font-size: 13px; text-decoration: none; transition: transform .12s ease, background-color .15s; }
 .pf-act:hover { background: var(--pc); }
 .pf-act:active { transform: scale(.96); }
 .pf-act--main { background: var(--pa); color: var(--po); }
@@ -98,12 +98,13 @@
 .pf--oficio .pf-ico { background: var(--pa); color: var(--po); }
 
 /* --- Mercado: toldo de rayas con borde festoneado y precios como etiquetas --- */
-.pf--mercado { --r: 18px; --r-xl: 24px; }
+/* El toldo usa un tono medio del acento (no el acento pleno): se lee como toldo sin pesar más que el nombre. */
+.pf--mercado { --r: 18px; --r-xl: 24px; --aw: color-mix(in srgb, var(--pa) 62%, var(--ps)); }
 .pf--mercado .pf-cover { padding-top: calc(clamp(22px, 5vw, 44px) + 54px); }
 .pf--mercado .pf-cover::before { inset: 0 0 auto; height: 52px; z-index: 0;
-  background: radial-gradient(circle at 14px 0, var(--pa) 13px, transparent 14px) 0 38px / 56px 14px repeat-x,
+  background: radial-gradient(circle at 14px 0, var(--aw) 13px, transparent 14px) 0 38px / 56px 14px repeat-x,
               radial-gradient(circle at 14px 0, var(--ps) 13px, transparent 14px) 28px 38px / 56px 14px repeat-x,
-              repeating-linear-gradient(90deg, var(--pa) 0 28px, var(--ps) 28px 56px) 0 0 / 100% 38px no-repeat; }
+              repeating-linear-gradient(90deg, var(--aw) 0 28px, var(--ps) 28px 56px) 0 0 / 100% 38px no-repeat; }
 .pf--mercado .pf-art { top: auto; bottom: -30px; }
 .pf--mercado .pf-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); }
 .pf--mercado .pf-tile { align-items: center; text-align: center; padding: 20px 12px 16px; }
