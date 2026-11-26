@@ -16,8 +16,14 @@
   var ESTADO = { borrador: 'Borrador', pendiente: 'En revisión', publicado: 'Publicado', requiere_correccion: 'Requiere corrección', rechazado: 'Rechazado', suspendido: 'Suspendido', retirado: 'Retirado',
     aprobada: 'Aprobada', rechazada: 'Rechazada', retirada: 'Retirada' };
   var MAX_OFERTAS = 12, MAX_GALERIA = 4;
+  /* Atributos de teclado: los usuarios, correos, enlaces y teléfonos no se capitalizan ni se autocorrigen;
+     los nombres y textos libres conservan el comportamiento normal del teclado. */
+  var SIN_MAYUS = ' autocapitalize="none" autocorrect="off" spellcheck="false"';
+  var LOCAL_KEY = 'nubi.registro.local';
 
-  var st = { view: 'lista', negocios: [], rev: null, negocio: null, step: 0, datos: {}, zonas: [], saving: null, msg: '', errors: {} };
+  /* st.local = true: sin sesión. Es el MISMO asistente; el borrador se guarda solo en este dispositivo
+     y enviar a revisión o subir fotos pide entrar con la cuenta. */
+  var st = { view: 'lista', negocios: [], rev: null, negocio: null, step: 0, datos: {}, zonas: [], saving: null, msg: '', errors: {}, local: false };
   var saveTimer = null, miniMap = null, miniMarker = null;
   function client() { return Cerca.auth.ready(); }
   function uid() { var u = Cerca.auth.user(); return u && u.id; }
@@ -53,10 +59,23 @@
   }
   function cargarZonas() {
     return client().then(function (c) { return c.from('zonas').select('id, nombre, tipo').eq('municipio_id', C.municipio).eq('activa', true).order('nombre'); })
-      .then(function (r) { st.zonas = (r && r.data) || []; });
+      .then(function (r) { st.zonas = (r && r.data) || []; }, function () { st.zonas = st.zonas || []; });
   }
+  function leerLocal() {
+    var d = null;
+    try { d = JSON.parse(localStorage.getItem(LOCAL_KEY)); } catch (e) { d = null; }
+    if (!d) { // borrador del editor anterior (cerca.draft): se conservan los textos
+      try { var o = JSON.parse(localStorage.getItem('cerca.draft')); if (o && o.name) { d = { nombre: o.name, tipo: o.kind || '', frase: o.blurb || '', historia: o.story || '' }; } } catch (e) { /* nada */ }
+    }
+    return d && typeof d === 'object' ? d : {};
+  }
+  function borrarLocal() { try { localStorage.removeItem(LOCAL_KEY); localStorage.removeItem('cerca.draft'); } catch (e) { /* nada */ } }
   function guardar(inmediato) {
     clearTimeout(saveTimer);
+    if (st.local) {
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(st.datos)); estadoGuardado('Guardado en este dispositivo'); } catch (e) { estadoGuardado('No se pudo guardar en este dispositivo'); }
+      return Promise.resolve();
+    }
     var rev = st.rev; if (!rev || !/^(borrador|requiere_correccion)$/.test(rev.estado)) { return Promise.resolve(); }
     try { localStorage.setItem('nubi.registro.' + rev.id, JSON.stringify(st.datos)); } catch (e) { /* respaldo local opcional */ }
     var run = function () {
@@ -151,6 +170,7 @@
     st.errors = validar(st.datos);
     var ks = Object.keys(st.errors);
     if (ks.length) { st.step = pasoDeError(ks[0]); pintar(); say('Falta información obligatoria o hay datos por corregir.', true); return; }
+    if (st.local) { guardar(true); irAlAcceso('Para enviar a revisión, entra con tu cuenta. Tu borrador queda guardado en este dispositivo y podrás usarlo al entrar.'); return; }
     if (falta()) { say('Antes de enviar, autoriza el tratamiento de datos y acepta los términos en «Mis negocios». Tus cambios quedan guardados.', true); return; }
     say('Enviando a revisión…');
     guardar(true).then(client).then(function (c) { return c.rpc('enviar_revision', { p_revision: st.rev.id }); }).then(function (r) {
@@ -193,6 +213,35 @@
     return client().then(Cerca.privacidad.estado).catch(function () { return null; });
   }
   function falta() { return st.consent && (!st.consent.aceptada || st.consent.distinta); }
+  /* Sin sesión: lleva a la tarjeta de acceso con un aviso claro (no se pierde nada del borrador). */
+  function irAlAcceso(msg) {
+    say(msg);
+    var box = $('#auth-box'); if (!box || box.hidden) { return; }
+    box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    var b = box.querySelector('button, input'); if (b) { b.focus({ preventScroll: true }); }
+  }
+  /* Con sesión: el borrador hecho sin entrar se convierte en un negocio real en borrador (revisión). Las fotos no viajan. */
+  function importarLocal() {
+    var d = leerLocal(), nombre = String(d.nombre || '').trim();
+    if (nombre.length < 2) { say('El borrador de este dispositivo no tiene nombre. Escribe el nombre abajo para empezar.', true); return; }
+    say('Creando…');
+    client().then(function (c) { return c.rpc('crear_negocio', { p_municipio: C.municipio, p_nombre: nombre }); }).then(function (r) {
+      if (r.error) { throw r.error; }
+      return refrescar().then(function () {
+        var n = st.negocios.filter(function (x) { return x.id === r.data; })[0]; if (!n || !n.abierta) { return; }
+        return abrirRevision(n, n.abierta).then(function () {
+          var copia = JSON.parse(JSON.stringify(d)); delete copia.medios;
+          st.datos = Object.assign({}, st.datos, copia, { nombre: nombre }); borrarLocal();
+          return guardar(true).then(function () { pintar(); say('Listo: tu borrador ahora está en tu cuenta. Revisa los pasos y envíalo a revisión.'); });
+        });
+      });
+    }).catch(function (e) { say(errText(e), true); });
+  }
+  function tarjetaLocal() {
+    var d = leerLocal(); if (!d.nombre || String(d.nombre).trim().length < 2) { return ''; }
+    return '<div class="reg-local" role="note"><p><strong>Tienes un borrador sin enviar en este dispositivo:</strong> «' + esc(d.nombre) + '».</p>' +
+      '<div class="auth-acts"><button type="button" class="btn" data-reg="importar">Registrar con este borrador</button><button type="button" class="btn btn--ghost" data-reg="descartarlocal">Descartarlo</button></div></div>';
+  }
   function refrescar() { return Promise.all([cargarLista(), consentimiento()]).then(function (r) { st.negocios = r[0]; st.consent = r[1]; if (st.view === 'lista') { pintar(); } }).catch(function (e) { say(errText(e), true); }); }
 
   /* ---------- Pintar ---------- */
@@ -223,7 +272,7 @@
           '</div><div class="auth-acts">' + acts + '</div></li>';
       }).join('') + '</ul>' : '<p>Todavía no tienes negocios registrados.</p>') +
       (falta() ? '<p class="ed-hint">Para registrar un negocio o enviar cambios, primero completa «Antes de registrar tu negocio».</p>' :
-      '<form class="reg-new" id="reg-new-form">' + campo('reg-nuevo', 'Registrar un negocio nuevo', '<input id="reg-nuevo" maxlength="60" autocomplete="organization" placeholder="Ej.: Panadería La Espiga">', 'Después completarás la información en 6 pasos. Puedes guardar y volver cuando quieras.') +
+      tarjetaLocal() + '<form class="reg-new" id="reg-new-form">' + campo('reg-nuevo', 'Registrar un negocio nuevo', '<input id="reg-nuevo" maxlength="60" autocomplete="organization" autocapitalize="words" placeholder="Ej.: Panadería La Espiga">', 'Después completarás la información en 6 pasos. Puedes guardar y volver cuando quieras.') +
       '<button type="submit" class="btn">Empezar</button></form>');
   }
   function stepper() {
@@ -233,7 +282,7 @@
   }
   function pasoBasico(e) {
     var K = Cerca.profiles.KINDS;
-    return campo('rb-nombre', 'Nombre comercial <span class="reg-req">obligatorio</span>', '<input id="rb-nombre" data-k="nombre" maxlength="60" value="' + val('nombre') + '" placeholder="Ej.: Panadería La Espiga">', 'Como lo conocen tus clientes.', e.nombre) +
+    return campo('rb-nombre', 'Nombre comercial <span class="reg-req">obligatorio</span>', '<input id="rb-nombre" data-k="nombre" maxlength="60" autocapitalize="words" value="' + val('nombre') + '" placeholder="Ej.: Panadería La Espiga">', 'Como lo conocen tus clientes.', e.nombre) +
       campo('rb-tipo', 'Tipo de negocio <span class="reg-req">obligatorio</span>', '<select id="rb-tipo" data-k="tipo"><option value="">Elige uno…</option>' + Object.keys(K).map(function (k) {
         return '<option value="' + k + '"' + (st.datos.tipo === k ? ' selected' : '') + '>' + esc(K[k].label) + '</option>'; }).join('') + '</select>', 'Define la categoría en el buscador y el estilo de tu ficha.', e.tipo) +
       campo('rb-frase', 'Frase corta <span class="reg-opt">opcional</span>', '<input id="rb-frase" data-k="frase" maxlength="80" value="' + val('frase') + '" placeholder="Ej.: Pan caliente desde las 5 a. m.">') +
@@ -280,11 +329,16 @@
     return '<p class="ed-hint">Todos son opcionales. Solo se mostrará un botón si el dato es válido. Los clientes te escribirán directamente: Nubi no guarda mensajes.</p>' +
       f.map(function (x) {
         var v = get(x[0]), n = v ? S().normalizeContact(x[0], v) : {}, href = n.value ? S().contactHref(x[0], n.value) : '';
-        return campo('rc-' + x[0], x[1], '<input id="rc-' + x[0] + '" data-c="' + x[0] + '" type="' + (x[2] === 'url' ? 'text' : x[2]) + '" inputmode="' + (x[2] === 'tel' ? 'tel' : x[2] === 'email' ? 'email' : 'text') + '" value="' + esc(v) + '" placeholder="' + esc(x[3]) + '" autocomplete="off">',
+        return campo('rc-' + x[0], x[1], '<input id="rc-' + x[0] + '" data-c="' + x[0] + '" type="' + (x[2] === 'url' ? 'text' : x[2]) + '" inputmode="' + (x[2] === 'tel' ? 'tel' : x[2] === 'email' ? 'email' : x[2] === 'url' ? 'url' : 'text') + '" value="' + esc(v) + '" placeholder="' + esc(x[3]) + '" autocomplete="off"' + SIN_MAYUS + '>',
           href ? 'Se abrirá: ' + esc(href) : '', e['c_' + x[0]] || (n.error ? n.error : ''));
       }).join('');
   }
   function fotoCampo(tipo, label) {
+    if (st.local) {
+      return '<div class="reg-field"><span class="ed-label">' + label + '</span>' +
+        '<p class="ed-hint">Para subir fotos, entra con tu cuenta: se guardan en el servidor y se publican solo cuando se aprueben.</p>' +
+        '<div class="auth-acts"><button type="button" class="btn btn--ghost" data-reg="entrar">Entrar para subir fotos</button></div></div>';
+    }
     var med = (st.datos.medios || []).filter(function (m) { return m.tipo === tipo; });
     var thumbs = med.map(function (m) { return '<li><img src="' + esc(S().mediaUrl(m.ruta)) + '" alt="' + (tipo === 'logo' ? 'Logotipo' : 'Foto') + '"><button type="button" data-reg="quitarfoto" data-ruta="' + esc(m.ruta) + '" aria-label="Quitar imagen">×</button></li>'; }).join('');
     var lleno = tipo === 'galeria' ? med.length >= MAX_GALERIA : false;
@@ -319,7 +373,7 @@
       '<p class="ed-hint">Así verán tu negocio los clientes cuando se apruebe. Puedes volver a cualquier paso.</p>' +
       '<div class="reg-preview">' + html + '</div>' +
       (rev.estado === 'pendiente' ? '<p class="auth-msg">Enviado: en revisión. No puedes editarlo mientras se revisa; si necesitas cambiar algo, retira el envío desde «Mis negocios».</p>'
-        : '<div class="auth-acts"><button type="button" class="btn" data-reg="enviar"' + (n ? ' aria-disabled="true"' : '') + '>Enviar a revisión</button></div>');
+        : st.local ? '<p class="reg-aviso" role="note">Para enviar a revisión necesitas entrar con tu cuenta. Tu borrador no se pierde.</p>' : '');
   }
   function pintar() {
     var r = root(); if (!r) { return; }
@@ -329,14 +383,19 @@
     }
     var e = st.errors, bloqueado = st.rev.estado === 'pendiente';
     var cuerpo = [pasoBasico, pasoUbicacion, pasoHorario, pasoContacto, pasoOferta, pasoVista][st.step](e);
-    r.innerHTML = '<div class="reg-top"><button type="button" class="btn btn--ghost" data-reg="volver">← Mis negocios</button><span class="ed-status" id="reg-saved" role="status"></span></div>' +
+    var ultimo = st.step === STEPS.length - 1, nErr = ultimo ? Object.keys(validar(st.datos)).length : 0;
+    var arriba = st.local ? '<button type="button" class="btn btn--ghost" data-reg="borrarlocal">Borrar borrador</button>'
+      : '<button type="button" class="btn btn--ghost" data-reg="volver">← Mis negocios</button>';
+    r.innerHTML = '<div class="reg-top">' + arriba + '<span class="ed-status" id="reg-saved" role="status">' + (st.local ? 'Borrador solo en este dispositivo' : '') + '</span></div>' +
       '<h2 class="reg-h">' + esc(st.datos.nombre || 'Tu negocio') + ' <span class="reg-badge reg-badge--' + esc(st.rev.estado) + '">' + esc(ESTADO[st.rev.estado]) + '</span></h2>' +
       stepper() + '<p class="reg-prog">Paso ' + (st.step + 1) + ' de ' + STEPS.length + '</p>' +
       '<p class="auth-msg' + (st.msgErr ? ' is-error' : '') + '" id="reg-msg"' + (st.msg ? '' : ' hidden') + '>' + esc(st.msg) + '</p>' +
       '<section class="reg-step" aria-labelledby="reg-step-h"><h3 id="reg-step-h" tabindex="-1">' + esc(STEPS[st.step]) + '</h3>' +
       (bloqueado && st.step < 5 ? '<fieldset disabled class="reg-lock">' + cuerpo + '</fieldset>' : cuerpo) + '</section>' +
-      '<div class="reg-nav">' + (st.step > 0 ? '<button type="button" class="btn btn--ghost" data-reg="atras">Atrás</button>' : '<span></span>') +
-      (st.step < STEPS.length - 1 ? '<button type="button" class="btn" data-reg="siguiente">Siguiente</button>' : '') + '</div>';
+      /* Navegación única: «Atrás» secundario y la acción principal (Siguiente o Enviar a revisión) con el mismo alto. */
+      '<div class="reg-nav">' + (st.step > 0 ? '<button type="button" class="btn btn--ghost reg-nav-sec" data-reg="atras">Atrás</button>' : '<span></span>') +
+      (!ultimo ? '<button type="button" class="btn reg-nav-pri" data-reg="siguiente">Siguiente</button>'
+        : bloqueado ? '' : '<button type="button" class="btn btn--accent reg-nav-pri" data-reg="enviar"' + (nErr ? ' aria-disabled="true"' : '') + '>Enviar a revisión</button>') + '</div>';
     if (st.step === 1 && st.datos.ubicacion && st.datos.ubicacion.modo === 'local') { montarMapa(); }
   }
   function irA(i) {
@@ -385,7 +444,7 @@
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target; if (!root() || !root().contains(t)) { return; }
-    if (t.name === 'ru-modo') { st.datos.ubicacion = t.value === 'zona' ? { modo: 'zona', zona_id: (st.zonas[0] || {}).id } : { modo: 'local' }; guardar(); pintar(); }
+    if (t.name === 'ru-modo') { st.datos.ubicacion = t.value === 'zona' ? { modo: 'zona', zona_id: (st.zonas[0] || {}).id } : { modo: 'local' }; guardar(); pintar(); if (st.local && t.value === 'zona') { zonasLocal(); } }
     if (t.name === 'rh-modo') { var h = semana(); h.modo = t.value; if (t.value !== 'fijo') { h.semana = []; } guardar(); pintar(); }
     if (t.type === 'checkbox' && t.dataset.dia) {
       var hh = semana(), i = +t.dataset.dia; hh.modo = 'fijo'; hh.semana = hh.semana.filter(function (s) { return s.dia !== i; });
@@ -413,6 +472,10 @@
     if (a === 'siguiente') { irA(st.step + 1); }
     if (a === 'atras') { irA(st.step - 1); }
     if (a === 'enviar') { enviar(); }
+    if (a === 'entrar') { irAlAcceso('Entra con tu cuenta para subir fotos. Lo que ya escribiste queda guardado en este dispositivo.'); }
+    if (a === 'borrarlocal') { if (confirm('¿Borrar el borrador de este dispositivo? No se puede deshacer.')) { borrarLocal(); st.datos = {}; st.step = 0; st.errors = {}; say('Borrador borrado.'); pintar(); } }
+    if (a === 'importar') { importarLocal(); }
+    if (a === 'descartarlocal') { if (confirm('¿Descartar el borrador de este dispositivo?')) { borrarLocal(); say('Borrador descartado.'); pintar(); } }
     if (a === 'miubic') { Cerca.geo.locate().then(function (p) { st.datos.ubicacion = Object.assign(st.datos.ubicacion || {}, { modo: 'local', lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6) }); guardar(); pintar(); }, function (e) { say(e.message, true); }); }
     if (a === 'franja2') { var h = semana(), i = +b.dataset.dia; h.semana.push({ dia: i, abre: '14:00', cierra: '18:00' }); h.semana.sort(function (x, y) { return x.dia - y.dia || (x.abre < y.abre ? -1 : 1); }); guardar(); pintar(); }
     if (a === 'quitar2') { var h2 = semana(), d = +b.dataset.dia, k = 0; h2.semana = h2.semana.filter(function (s) { return s.dia !== d || k++ === 0; }); guardar(); pintar(); }
@@ -427,15 +490,31 @@
   var guardarBase = guardar;
   guardar = function (inm) { if (st.datos && st.datos.ofertas) { st.datos.ofertas = st.datos.ofertas.filter(function (o, i, arr) { return o.nombre || i === arr.length - 1; }); } return guardarBase(inm); };
 
-  /* ---------- Montaje: con sesión se muestra el registro; sin sesión, el editor local de siempre ---------- */
+  /* ---------- Montaje: un solo formulario. Con sesión, «Mis negocios» y el asistente contra el servidor;
+     sin sesión, el mismo asistente con el borrador en este dispositivo. ---------- */
+  function iniciarLocal() {
+    clearTimeout(saveTimer);
+    st.local = true; st.view = 'asistente'; st.negocio = null; st.negocios = []; st.rev = { id: 'local', estado: 'borrador' };
+    st.datos = leerLocal(); st.step = 0; st.errors = {}; say('');
+    pintar(); // las zonas se piden solo si el comerciante elige «atiendo en una zona» (no se conecta al servidor sin necesidad)
+    if (st.datos.ubicacion && st.datos.ubicacion.modo === 'zona') { zonasLocal(); }
+  }
+  function zonasLocal() {
+    if (st.zonas.length) { return; }
+    cargarZonas().then(function () {
+      var u = st.datos.ubicacion; if (!st.local || !u || u.modo !== 'zona') { return; }
+      if (!u.zona_id && st.zonas[0]) { u.zona_id = st.zonas[0].id; guardar(); }
+      pintar();
+    });
+  }
   function sync(s) {
     var v = $('#view-owner'), r = root(); if (!v || !r) { return; }
     var on = s.status === 'signed_in';
-    v.classList.toggle('is-registro', on); r.hidden = !on;
+    v.classList.add('is-registro'); r.hidden = false;
     var note = $('#owner-notice');
     if (note) { note.textContent = on ? 'Entorno de prueba: lo que registres se guarda como borrador en el servidor de pruebas y solo se publica en esta app cuando la administración lo aprueba.' : note.dataset.base; }
-    if (on && !r.dataset.listo) { r.dataset.listo = '1'; st.view = 'lista'; r.innerHTML = '<p class="ed-hint" role="status">Cargando tus negocios…</p>'; refrescar(); }
-    if (!on) { r.dataset.listo = ''; st.view = 'lista'; st.negocios = []; st.rev = null; }
+    if (on && !r.dataset.listo) { clearTimeout(saveTimer); st.local = false; r.dataset.listo = '1'; st.view = 'lista'; st.rev = null; st.msg = ''; r.innerHTML = '<p class="ed-hint" role="status">Cargando tus negocios…</p>'; refrescar(); }
+    if (!on && !st.local) { r.dataset.listo = ''; iniciarLocal(); }
   }
   function init() { var note = $('#owner-notice'); if (note && !note.dataset.base) { note.dataset.base = note.textContent; } if (Cerca.auth) { Cerca.auth.onChange(sync); sync(Cerca.auth.state()); } }
   if (Cerca.app) { init(); } else { document.addEventListener('nubi:app-lista', init, { once: true }); }

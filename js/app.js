@@ -277,23 +277,23 @@ Cerca.store.ready().then(function () {
       else { toast('Copia este enlace: ' + url); }
     }
   }
-  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', draft: 'Vista previa de tu negocio', admin: 'Moderación', privacy: 'Privacidad y términos' };
+  var VIEWS = { home: 'Explorar', saved: 'Guardados', owner: 'Tu negocio', settings: 'Ajustes', profile: '', admin: 'Moderación', privacy: 'Privacidad y términos' };
   function route() {
     var h = location.hash || '#/';
+    // La vista previa del borrador ahora es el paso 6 del registro (formulario único).
+    if (h === '#/mi-negocio/vista') { history.replaceState(null, '', '#/mi-negocio'); h = '#/mi-negocio'; }
     var m = /^#\/negocio\/([\w-]+)$/.exec(h), b = m && S.resolve(m[1]); // slug estable; los números antiguos de la demo siguen funcionando
     var prev = state.view;
-    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' : h === '#/mi-negocio/vista' ? 'draft' : h === '#/ajustes' ? 'settings' : h === '#/admin' ? 'admin' : h === '#/privacidad' ? 'privacy' : 'home';
+    state.view = b ? 'profile' : h === '#/guardados' ? 'saved' : h === '#/mi-negocio' ? 'owner' :h === '#/ajustes' ? 'settings' : h === '#/admin' ? 'admin' : h === '#/privacidad' ? 'privacy' : 'home';
     state.profile = b || null;
     // Enlace compartido a un negocio que ya no está publicado (retirado, suspendido o eliminado): explicarlo.
     if (m && !b) { toast('Ese negocio ya no está publicado en Nubi.'); }
     Object.keys(VIEWS).forEach(function (v) { $('#view-' + v).hidden = v !== state.view; });
-    var navKey = state.view === 'profile' ? 'home' : state.view === 'draft' ? 'owner' : state.view === 'admin' || state.view === 'privacy' ? 'settings' : state.view;
+    var navKey = state.view === 'profile' ? 'home' :state.view === 'admin' || state.view === 'privacy' ? 'settings' : state.view;
     $$('[data-nav]').forEach(function (a) { if (a.dataset.nav === navKey) { a.setAttribute('aria-current', 'page'); } else { a.removeAttribute('aria-current'); } });
     document.title = (b ? b.name : VIEWS[state.view]) + ' · ' + C.appName;
     if (state.view === 'profile') { renderProfile(b); }
     if (state.view === 'saved') { renderSaved(); }
-    if (state.view === 'owner' && Cerca.editor) { Cerca.editor.refresh(); }
-    if (state.view === 'draft' && Cerca.editor) { $('#draft-profile').innerHTML = Cerca.profiles.render(Cerca.editor.draft(), profileHelpers(true)); }
     if (state.view !== 'home' && geoCtl && geoCtl.tracking()) { geoCtl.stopTracking('Detuvimos el seguimiento al salir del mapa.'); }
     if (state.view === 'home') {
       render(); map.resize();

@@ -237,14 +237,21 @@
 .reg-preview { border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
 .reg-preview .pf { padding: 12px 12px 20px; }
 .reg-falta { padding: 10px 14px; border-radius: 14px; background: #FFE7BD; color: #4A2E00; } .reg-falta ul { margin: 6px 0 0; padding-left: 18px; } .reg-falta .reg-mini { color: inherit; }
-.reg-nav { display: flex; justify-content: space-between; gap: 10px; } .reg-nav .btn { min-height: 44px; min-width: 120px; }
+/* Navegación del asistente: mismo alto para todos; «Atrás» secundario (contorno) y la acción principal más ancha y rellena. */
+.reg-nav { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.reg-nav .btn { box-sizing: border-box; height: 48px; min-height: 48px; padding: 0 20px; font-size: 15px; line-height: 1.15; text-align: center; }
+.reg-nav .reg-nav-sec { min-width: 112px; }
+.reg-nav .reg-nav-pri { min-width: 180px; }
+.reg-nav .reg-nav-pri[aria-disabled="true"] { opacity: .7; }
+.reg-local { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); } .reg-local p { margin: 0; }
+.reg-aviso { margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); font-size: 14px; }
 .mod { display: flex; flex-direction: column; gap: 16px; } .mod .panel-card { align-items: stretch; }
 .mod-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; } .mod-log span { color: var(--muted); }
 .pf-act { overflow-wrap: normal; } /* las etiquetas de acción nunca se parten a mitad de palabra */
 .reg-preview .pf-actions, .mod .reg-preview .pf-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pf-contacts { display: flex; flex-direction: column; gap: 4px; } .pf-contacts a { color: inherit; font-weight: 600; }
 .pf-extra { margin: 12px 0 0; font-size: 14px; }
-@media (max-width: 560px) { .reg-dia .reg-chk { flex: 1 0 100%; } .reg-nav .btn { flex: 1; min-width: 0; } }
+@media (max-width: 560px) { .reg-dia .reg-chk { flex: 1 0 100%; } .reg-nav .reg-nav-sec { flex: 1 1 0; min-width: 0; padding: 0 12px; } .reg-nav .reg-nav-pri { flex: 2 1 0; min-width: 0; padding: 0 12px; } }
 
 /* Responsividad de «Negocio» (corrección 2026-11-20): los campos se ajustan al ancho disponible.
    Causa del desborde: la columna «1fr» no podía ser más estrecha que el contenido mínimo de un destacado

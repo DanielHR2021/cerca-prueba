@@ -192,7 +192,7 @@
       (gOff ? '<p class="ed-hint">El acceso con Google se está activando. Mientras tanto puedes entrar con un enlace por correo.</p>' : '') + msg +
       '<details class="auth-alt"' + (state.showEmail || gOff ? ' open' : '') + '><summary>Entrar con un enlace por correo</summary>' +
       '<form class="auth-form" id="auth-form" novalidate><label for="auth-email">Correo electrónico</label>' +
-      '<input id="auth-email" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="nombre@correo.com" value="' + esc(state.email) + '"' + (busy ? ' disabled' : '') + '>' +
+      '<input id="auth-email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" placeholder="nombre@correo.com" value="' + esc(state.email) + '"' + (busy ? ' disabled' : '') + '>' +
       '<button type="submit" class="btn btn--ghost"' + (busy ? ' disabled aria-busy="true"' : '') + '>' + (busy ? 'Enviando…' : 'Enviarme el enlace') + '</button></form>' +
       '<p class="ed-hint">Opción limitada en el entorno de prueba (pocos correos por hora).</p></details>' + note;
   }
