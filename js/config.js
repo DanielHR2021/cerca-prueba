@@ -28,6 +28,11 @@ window.CERCA_CONFIG = {
   // L02 (fundador, 2026-11-22, D16): solo negocios reales aprobados. Si el servidor falla, se usa la última lista
   // guardada en el dispositivo (≤ 7 días). Los 10 ficticios quedan solo para pruebas: ?datos=demo (o ?datos=mixto).
   dataSource: 'supabase',
+  // Patrocinios (preparado, apagado): solo se activa con campañas reales aprobadas y la migración 0008 aplicada.
+  // Con activo = false no se hace ninguna consulta ni se muestra ningún espacio.
+  patrocinios: { activo: false },
+  // Forma de atender «en línea» (sin local ni zona): requiere la migración 0008 en la base de datos.
+  modoEnLinea: false,
   // Supabase (Etapa 1, T5): PROYECTO DE PRUEBAS «nubi-pruebas». La clave «publishable» está hecha para el
   // navegador: la protección real son las reglas por fila (RLS) de db/migraciones. La clave de servicio (privada) NUNCA va aquí.
   supabase: {

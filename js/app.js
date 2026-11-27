@@ -34,7 +34,9 @@ Cerca.store.ready().then(function () {
   function hoursText(b) { return S.hoursLabel(b, NOW); }
   function byId(id) { return S.get(id); }
 
-  var state = { cat: 'Todos', q: '', openOnly: false, sel: null, pane: 'map', approx: false, view: 'home' };
+  // Descubrimiento (2026-11-27): se abre en la lista, donde están TODOS los negocios (con o sin local); el mapa solo
+  // puede mostrar los que tienen punto público. state.modo filtra por cómo atiende: null | 'local' | 'zona' | 'en_linea'.
+  var state = { cat: 'Todos', q: '', openOnly: false, modo: null, sel: null, pane: 'list', approx: false, view: 'home' };
 
   /* ---------- Guardados (solo en este dispositivo) ---------- */
   // T2: se guardan identificadores estables (uid); la migración desde 'cerca.saved' la hace la capa de datos sin borrar nada.
@@ -64,7 +66,7 @@ Cerca.store.ready().then(function () {
   /* ---------- Filtro y búsqueda ---------- */
   function filtered() {
     var items = DATA.filter(function (b) {
-      return (state.cat === 'Todos' || b.category === state.cat) && (!state.openOnly || isOpen(b));
+      return (state.cat === 'Todos' || b.category === state.cat) && (!state.openOnly || isOpen(b)) && (!state.modo || S.attendMode(b) === state.modo);
     });
     var q = state.q.trim();
     if (!q) { state.approx = false; state.hits = {}; state.tooShort = false; return items; }
@@ -81,6 +83,16 @@ Cerca.store.ready().then(function () {
     return '<span class="status' + (o === true ? ' is-open' : o === false ? ' is-closed' : '') + '">' + esc(txt) + '</span>' +
       (b.moved ? '<span class="tag tag--moved">Reubicado</span>' : '') + (b.fresh ? '<span class="tag tag--new">Nuevo</span>' : '');
   }
+  /* Etiqueta «cómo atiende» de las tarjetas: corta y sin dirección (la dirección va en la ficha). */
+  var I_MODO = {
+    local: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg>',
+    zona: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>',
+    en_linea: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>'
+  };
+  function modoTag(b) {
+    var m = S.attendMode(b), t = m === 'local' ? 'Con local' : m === 'en_linea' ? 'En línea' : b.delivery ? 'A domicilio' : 'Por zona'; // la zona y la dirección van en la ficha
+    return '<span class="tag tag--modo tag--' + m + '" title="' + esc(S.attendLabel(b)) + '">' + I_MODO[m] + esc(t) + '</span>';
+  }
   function cardHtml(b, mode) { // mode 'pick' = selecciona en el mapa; 'map' = abre Explorar en el mapa
     var on = mode === 'pick' && state.sel === b.id;
     return '<li class="card' + (on ? ' is-sel' : '') + '" data-id="' + b.id + '">' +
@@ -89,13 +101,22 @@ Cerca.store.ready().then(function () {
       '<span class="card-name">' + esc(b.name) + '</span><span class="card-blurb">' + esc(b.blurb) + '</span>' +
       (mode === 'pick' && state.q.trim() && state.hits && state.hits[b.id] && Cerca.search.words(state.hits[b.id]).join(' ') !== Cerca.search.words(state.q).join(' ')
         ? '<span class="card-hit"><span class="sr-only">Coincide con </span>' + esc(state.hits[b.id]) + '</span>' : '') +
-      '<span class="card-meta">' + statusHtml(b) + '</span></span></button>' + saveBtn(b) +
+      '<span class="card-meta">' + modoTag(b) + statusHtml(b) + '</span></span></button>' + saveBtn(b) +
       '<a class="card-link" href="#/negocio/' + b.slug + '" aria-label="Ver perfil de ' + esc(b.name) + '">Ver perfil</a></li>';
   }
   function renderChips() {
     el.chips.innerHTML = CATS.map(function (c) {
       return '<button type="button" class="chip" data-cat="' + esc(c) + '" aria-pressed="' + (state.cat === c) + '">' + esc(c) + '</button>';
-    }).join('') + '<button type="button" class="chip chip--open" id="open-only" aria-pressed="' + state.openOnly + '">Abierto ahora</button>';
+    }).join('') + '<button type="button" class="chip chip--open" id="open-only" aria-pressed="' + state.openOnly + '">Abierto ahora</button>' +
+      // «Cómo atiende»: solo las formas que existen hoy (con 2 negocios no se ofrecen filtros vacíos; con miles salen todas).
+      modosPresentes().map(function (m) {
+        return '<button type="button" class="chip chip--modo" data-modo="' + m + '" aria-pressed="' + (state.modo === m) + '">' + I_MODO[m] + '<span>' + esc(S.ATIENDE[m]) + '</span></button>';
+      }).join('');
+  }
+  function modosPresentes() {
+    var set = {}; DATA.forEach(function (b) { set[S.attendMode(b)] = true; });
+    var l = ['local', 'zona', 'en_linea'].filter(function (m) { return set[m]; });
+    return l.length > 1 || state.modo ? l : []; // si todos atienden igual, el filtro no aporta nada
   }
   /* M03: texto del número de resultados, común a la lista, al panel del mapa y a la línea bajo el buscador. */
   function countText(items) {
@@ -107,12 +128,27 @@ Cerca.store.ready().then(function () {
   // Fundido corto de los resultados solo cuando cambia la búsqueda (no al seleccionar).
   function replay(list, q) { if (q === list._q) { return; } list._q = q; list.classList.remove('r-anim'); void list.offsetWidth; list.classList.add('r-anim'); }
   function renderList(items) {
-    el.list.innerHTML = items.map(function (b, i) { return cardHtml(b, 'pick').replace('<li class="card', '<li style="--i:' + i + '" class="card'); }).join('');
+    var browsing = !state.q.trim() && state.cat === 'Todos' && !state.openOnly && !state.modo;
+    var promo = browsing && Cerca.patrocinios ? Cerca.patrocinios.tarjeta(state, byId) : '';
+    el.list.innerHTML = promo + items.map(function (b, i) { return cardHtml(b, 'pick').replace('<li class="card', '<li style="--i:' + i + '" class="card'); }).join('') +
+      // Invitación a comerciantes al final del recorrido (no es publicidad: es la forma de sumar negocios reales).
+      (items.length && !state.q.trim() ? '<li class="invite"><p><strong>¿Tienes un negocio' + (C.municipioNombre ? ' en ' + esc(C.municipioNombre) : '') + '?</strong> Aparece en Nubi gratis, con local o sin él.</p><a class="btn btn--ghost" href="#/mi-negocio">Registrar mi negocio</a></li>' : '');
     el.count.textContent = countText(items);
+    var off = items.filter(function (b) { return !S.hasPoint(b); }).length;
+    el.count.textContent += browsing && off ? ' · ' + (items.length - off) + ' con local, ' + off + ' a domicilio o en línea' : '';
+    renderOffmap(items);
     el.empty.hidden = items.length > 0;
     replay(el.list, state.q.trim() + '|' + state.cat + '|' + state.openOnly);
   }
 
+  /* Aviso del mapa: los negocios sin punto público existen aunque no tengan pin; se dice cuántos y se ofrece verlos. */
+  function renderOffmap(items) {
+    var box = $('#offmap'); if (!box) { return; }
+    var off = items.filter(function (b) { return !S.hasPoint(b); }).length;
+    box.hidden = !off || !!state.q.trim() || !narrow() || state.pane !== 'map'; // en escritorio la lista está al lado y ya lo dice
+    if (!off) { return; }
+    $('#offmap-text').textContent = off === 1 ? '1 negocio atiende a domicilio o en línea y no aparece en el mapa.' : off + ' negocios atienden a domicilio o en línea y no aparecen en el mapa.';
+  }
   /* ---------- M03: panel de resultados sobre el mapa (celular) ---------- */
   var sheet = 'hidden'; // hidden | min (solo cabecera) | peek (compacto) | full (expandido)
   function distLabel(b) {
@@ -250,6 +286,7 @@ Cerca.store.ready().then(function () {
   }
   function go(hash) { if (location.hash !== hash) { location.hash = hash; } else { route(); } }
   function showMap(id) {
+    var nb = id && byId(id); if (nb && !S.hasPoint(nb)) { go('#/negocio/' + nb.slug); return; } // sin punto público no hay nada que ver en el mapa
     state.pane = 'map';
     if (id) { var b = byId(id); if (b && filtered().indexOf(b) === -1) { state.q = ''; state.cat = 'Todos'; state.openOnly = false; el.input.value = ''; renderChips(); } state.sel = id; }
     go('#/');
@@ -532,10 +569,16 @@ Cerca.store.ready().then(function () {
   renderChips();
   el.chips.addEventListener('click', function (e) {
     var c = e.target.closest('.chip'); if (!c) { return; }
-    if (c.id === 'open-only') { state.openOnly = !state.openOnly; } else { state.cat = c.dataset.cat; }
+    if (c.id === 'open-only') { state.openOnly = !state.openOnly; } else if (c.dataset.modo) { state.modo = state.modo === c.dataset.modo ? null : c.dataset.modo; } else { state.cat = c.dataset.cat; }
     renderChips(); afterFilterChange();
   });
-  el.list.addEventListener('click', function (e) { var b = e.target.closest('[data-pick]'); if (b) { pick(+b.dataset.pick, false); } });
+  // En el celular (lista a pantalla completa) o si el negocio no tiene punto en el mapa, tocar la tarjeta abre su ficha.
+  el.list.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pick]'); if (!b) { return; }
+    var n = byId(+b.dataset.pick);
+    if (n && (narrow() || !S.hasPoint(n))) { go('#/negocio/' + n.slug); return; }
+    pick(+b.dataset.pick, false);
+  });
   $('#saved-list').addEventListener('click', function (e) { var b = e.target.closest('[data-map]'); if (b) { showMap(+b.dataset.map); } });
   document.addEventListener('click', function (e) { var b = e.target.closest('[data-save]'); if (b) { toggleSave(+b.dataset.save); } });
   /* M03: búsqueda en vivo con una espera breve, limpiar (botón y Esc) y panel de resultados. */
@@ -578,6 +621,8 @@ Cerca.store.ready().then(function () {
     var b = e.target.closest('[data-rpick]'); if (!b) { return; }
     pick(+b.dataset.rpick, false); // centra el mapa, abre la ficha y recoge el panel (la ruta activa se conserva si es de este negocio)
   });
+  document.addEventListener('nubi:patrocinios', function () { if (state.view === 'home') { render(); } });
+  $('#offmap-go').addEventListener('click', function () { state.modo = null; state.pane = 'list'; renderChips(); render(); var l = $('#list .card'); if (l) { l.scrollIntoView({ block: 'nearest' }); } });
   $('#pane-list').addEventListener('click', function () { state.pane = 'list'; render(); if (geoCtl.tracking()) { geoCtl.stopTracking('Detuvimos el seguimiento al pasar a la lista.'); } });
   $('#pane-map').addEventListener('click', function () { state.pane = 'map'; if (state.q.trim() && sheet === 'hidden') { sheet = 'peek'; } render(); map.resize(); });
   $('#clear-saved').addEventListener('click', function () {

@@ -1,9 +1,9 @@
 /* Service worker mínimo de la PWA de prueba.
    Red primero para los archivos propios (siempre la versión publicada más reciente);
    la copia en caché solo se usa sin conexión. El mapa, las teselas y las fuentes externas no se guardan. */
-var CACHE = 'cerca-v24';
-var SHELL = ['./', 'index.html', 'css/styles.css?v=24', 'css/profiles.css?v=24', 'js/config.js?v=24', 'js/data.js?v=24', 'js/store.js?v=24', 'js/map.js?v=24', 'js/geo.js?v=24', 'js/routing.js?v=24', 'js/search.js?v=24', 'js/brand.js?v=24',
-  'js/profiles.js?v=24', 'js/app.js?v=24', 'js/assistant.js?v=24', 'js/auth.js?v=24', 'js/registro.js?v=24', 'js/moderacion.js?v=24', 'js/privacidad.js?v=24', 'js/reportes.js?v=24','manifest.webmanifest', 'assets/brand/icon-192.png', 'assets/brand/icon-512.png', 'assets/brand/icon-maskable-192.png', 'assets/brand/icon-maskable-512.png', 'assets/brand/apple-touch-icon.png', 'assets/brand/favicon.svg'];
+var CACHE = 'cerca-v25';
+var SHELL = ['./', 'index.html', 'css/styles.css?v=25', 'css/profiles.css?v=25', 'js/config.js?v=25', 'js/data.js?v=25', 'js/store.js?v=25', 'js/map.js?v=25', 'js/geo.js?v=25', 'js/routing.js?v=25', 'js/search.js?v=25', 'js/brand.js?v=25',
+  'js/profiles.js?v=25', 'js/app.js?v=25', 'js/assistant.js?v=25', 'js/auth.js?v=25', 'js/registro.js?v=25', 'js/moderacion.js?v=25', 'js/privacidad.js?v=25', 'js/reportes.js?v=25', 'js/patrocinios.js?v=25','manifest.webmanifest', 'assets/brand/icon-192.png', 'assets/brand/icon-512.png', 'assets/brand/icon-maskable-192.png', 'assets/brand/icon-maskable-512.png', 'assets/brand/apple-touch-icon.png', 'assets/brand/favicon.svg'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));

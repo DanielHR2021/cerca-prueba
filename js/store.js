@@ -71,7 +71,7 @@
     b.keywords = b.keywords || []; b.tags = b.tags || []; b.products = b.products || []; b.payments = b.payments || [];
     var loc = b.location || (isFinite(b.lat) && isFinite(b.lng) ? { mode: 'local', lat: b.lat, lng: b.lng, address: b.address || null } : null);
     if (loc && loc.mode === 'local' && isFinite(loc.lat) && isFinite(loc.lng)) { b.location = loc; b.lat = loc.lat; b.lng = loc.lng; }
-    else { b.location = loc && loc.mode === 'zona' ? { mode: 'zona', zone: loc.zone || null } : null; b.lat = null; b.lng = null; } // sin punto público: sin pin ni rutas
+    else { b.location = loc && loc.mode === 'zona' ? { mode: 'zona', zone: loc.zone || null } : loc && loc.mode === 'en_linea' ? { mode: 'en_linea' } : null; b.lat = null; b.lng = null; } // sin punto público: sin pin ni rutas
     b.hours = hoursOf(b);
     if (MODES.indexOf(b.hours.mode) === -1) { b.hours = hoursOf(null); }
     // Solo contactos válidos (normalizados): nunca se muestra un botón con un dato inválido.
@@ -108,6 +108,18 @@
   // Enlace oficial «Maps URLs» de Google (sin clave). A pie; solo para negocios con punto público.
   function mapsHref(b) { return hasPoint(b) ? 'https://www.google.com/maps/dir/?api=1&destination=' + b.lat + ',' + b.lng + '&travelmode=walking' : null; }
   function hasPoint(b) { return !!(b && b.location && b.location.mode === 'local' && isFinite(b.lat) && isFinite(b.lng)); }
+  /* Cómo atiende un negocio (fuente única para lista, filtros, mapa y ficha):
+     'local' = recibe clientes en un punto público (pin y rutas); 'zona' = a domicilio o en una zona de cobertura
+     (sin punto ni dirección); 'en_linea' = solo por redes, WhatsApp o web. La cobertura no es la ubicación del negocio. */
+  var ATIENDE = { local: 'Con local', zona: 'A domicilio o por zona', en_linea: 'En línea' };
+  function attendMode(b) { return hasPoint(b) ? 'local' : b && b.location && b.location.mode === 'en_linea' ? 'en_linea' : 'zona'; }
+  function attendLabel(b) {
+    var m = attendMode(b);
+    if (m === 'local') { return b.location.address ? 'Con local · ' + b.location.address : 'Con local'; }
+    if (m === 'en_linea') { return b.delivery ? 'En línea · hace domicilios' : 'En línea'; }
+    var z = b.location && b.location.zone && b.location.zone.name;
+    return (b.delivery ? 'A domicilio' : 'Atiende por zona') + (z ? ' · ' + z : '');
+  }
 
   /* ---------- Conversión desde la base de datos (T8) ----------
      Fila de negocios_publicos + horarios + contactos + ofertas + medios → forma única de negocio. */
@@ -127,7 +139,7 @@
       blurb: n.frase || '', description: n.descripcion || '', story: n.historia || '', news: n.novedad ? { when: 'Novedad', text: n.novedad } : null,
       keywords: n.palabras_clave || [], tags: n.etiquetas || [],
       products: (rel.ofertas || []).map(function (o) { return { n: o.nombre, d: o.detalle || '', p: precioTexto(o), i: o.icono || undefined }; }),
-      location: n.modo_ubicacion === 'local' ? { mode: 'local', lat: n.lat, lng: n.lng, address: n.direccion_publica || null } : { mode: 'zona', zone: { name: n.zona_nombre } },
+      location: n.modo_ubicacion === 'local' ? { mode: 'local', lat: n.lat, lng: n.lng, address: n.direccion_publica || null } : n.modo_ubicacion === 'en_linea' ? { mode: 'en_linea' } : { mode: 'zona', zone: { name: n.zona_nombre } },
       hours: { mode: n.modo_horario || 'desconocido', week: week, exceptions: [] },
       contacts: (rel.contactos || []).map(function (c) { return { kind: c.tipo, value: c.valor }; }),
       delivery: n.domicilio, payments: n.medios_pago || [], updatedAt: n.actualizado_en,
@@ -147,7 +159,7 @@
       blurb: d.frase || '', description: d.descripcion || '', story: d.historia || '', news: d.novedad ? { when: 'Novedad', text: d.novedad } : null,
       keywords: d.palabras_clave || [], tags: d.etiquetas || [],
       products: (d.ofertas || []).filter(function (o) { return o && o.nombre; }).map(function (o) { return { n: o.nombre, d: o.detalle || '', p: precioTexto(o), i: o.icono }; }),
-      location: u.modo === 'local' ? { mode: 'local', lat: u.lat, lng: u.lng, address: u.direccion || null } : u.modo === 'zona' ? { mode: 'zona', zone: { name: extra.zonaNombre || 'Zona' } } : null,
+      location: u.modo === 'local' ? { mode: 'local', lat: u.lat, lng: u.lng, address: u.direccion || null } : u.modo === 'zona' ? { mode: 'zona', zone: { name: extra.zonaNombre || 'Zona' } } : u.modo === 'en_linea' ? { mode: 'en_linea' } : null,
       hours: { mode: h.modo || 'desconocido', week: week, exceptions: [] },
       contacts: (d.contactos || []).map(function (c) { return { kind: c.tipo, value: c.valor }; }),
       delivery: d.domicilio, payments: d.medios_pago || [], logo: pick('logo')[0] || null, cover: pick('portada')[0] || null, gallery: pick('galeria'), moved: false, fresh: true
@@ -256,7 +268,7 @@
     get: function (handle) { return byHandle[handle] || null; },
     // Resuelve lo que llega en la dirección: slug, uid o número antiguo de la demo.
     resolve: function (key) { key = String(key); return bySlug[key] || byUid[key] || (/^\d+$/.test(key) ? byLegacy[+key] : null) || null; },
-    hasPoint: hasPoint, canRoute: hasPoint, mapsHref: mapsHref,
+    hasPoint: hasPoint, canRoute: hasPoint, mapsHref: mapsHref, attendMode: attendMode, attendLabel: attendLabel, ATIENDE: ATIENDE,
     hoursOf: hoursOf, openAt: openAt, hoursLabel: hoursLabel, fmtTime: fmtTime,
     normalize: normalize, publicRows: publicRows, favorites: favorites, slugify: slugify,
     fromDb: fromDb, fromDatos: fromDatos, normalizeContact: normalizeContact, contactHref: contactHref, CONTACT_KINDS: CONTACT_KINDS, mediaUrl: mediaUrl, lastError: function () { return lastError; }, fromCache: function () { return fromCache; },

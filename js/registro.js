@@ -99,6 +99,8 @@
     var u = d.ubicacion || {};
     if (u.modo === 'local') { if (!isFinite(u.lat) || !isFinite(u.lng)) { e.ubicacion = 'Marca en el mapa dónde atiendes.'; } }
     else if (u.modo === 'zona') { if (!u.zona_id) { e.ubicacion = 'Elige la zona donde atiendes.'; } }
+    else if (u.modo === 'en_linea' && C.modoEnLinea) { /* sin punto ni zona: se atiende por redes, WhatsApp o web */
+      if (!(d.contactos || []).length) { e.ubicacion = 'Si atiendes solo en línea, agrega al menos un contacto (WhatsApp, Instagram, web…) en el paso 4.'; } }
     else { e.ubicacion = 'Indica si tienes un local o si atiendes en una zona.'; }
     var h = d.horario || {};
     if (h.modo === 'fijo' && !(h.semana || []).length) { e.horario = 'Marca al menos un día con su horario, o elige «con cita» o «variable».'; }
@@ -294,7 +296,9 @@
     var u = st.datos.ubicacion || {};
     return '<fieldset class="reg-radio"><legend>¿Dónde atiendes? <span class="reg-req">obligatorio</span></legend>' +
       '<label><input type="radio" name="ru-modo" value="local"' + (u.modo === 'local' ? ' checked' : '') + '> Tengo un local o punto de atención</label>' +
-      '<label><input type="radio" name="ru-modo" value="zona"' + (u.modo === 'zona' ? ' checked' : '') + '> No tengo local: atiendo a domicilio o en una zona</label></fieldset>' +
+      '<label><input type="radio" name="ru-modo" value="zona"' + (u.modo === 'zona' ? ' checked' : '') + '> No tengo local: atiendo a domicilio o en una zona</label>' +
+      (C.modoEnLinea ? '<label><input type="radio" name="ru-modo" value="en_linea"' + (u.modo === 'en_linea' ? ' checked' : '') + '> Solo en línea: vendo por redes, WhatsApp o web</label>' : '') + '</fieldset>' +
+      (u.modo === 'en_linea' ? '<p class="ed-hint">Tu ficha dirá «En línea». No se muestra en el mapa ni se publica ninguna dirección; los clientes te encuentran en la lista, la búsqueda y las categorías.</p>' : '') +
       (u.modo === 'local' ? '<p class="ed-hint">Toca el mapa para marcar la entrada de tu local. Los clientes podrán pedir una ruta a pie hasta ese punto.</p>' +
         '<div class="reg-map" id="reg-map" aria-label="Mapa para marcar tu local"></div>' +
         '<div class="auth-acts"><button type="button" class="btn btn--ghost" data-reg="miubic">Usar mi ubicación actual</button></div>' +
@@ -444,7 +448,7 @@
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target; if (!root() || !root().contains(t)) { return; }
-    if (t.name === 'ru-modo') { st.datos.ubicacion = t.value === 'zona' ? { modo: 'zona', zona_id: (st.zonas[0] || {}).id } : { modo: 'local' }; guardar(); pintar(); if (st.local && t.value === 'zona') { zonasLocal(); } }
+    if (t.name === 'ru-modo') { st.datos.ubicacion = t.value === 'zona' ? { modo: 'zona', zona_id: (st.zonas[0] || {}).id } : t.value === 'en_linea' ? { modo: 'en_linea' } : { modo: 'local' }; guardar(); pintar(); if (st.local && t.value === 'zona') { zonasLocal(); } }
     if (t.name === 'rh-modo') { var h = semana(); h.modo = t.value; if (t.value !== 'fijo') { h.semana = []; } guardar(); pintar(); }
     if (t.type === 'checkbox' && t.dataset.dia) {
       var hh = semana(), i = +t.dataset.dia; hh.modo = 'fijo'; hh.semana = hh.semana.filter(function (s) { return s.dia !== i; });

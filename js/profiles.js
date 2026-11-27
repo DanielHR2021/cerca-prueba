@@ -116,11 +116,18 @@
 
   var CONTACT_LABEL = { whatsapp: 'WhatsApp', telefono: 'Teléfono', correo: 'Correo', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', web: 'Web' };
   /* render(b, h): h = { statusHtml, hoursText, isSaved, place, dept, preview }. Devuelve HTML. */
+  /* Texto de «Cómo atiende» en la ficha: la zona de cobertura no es la ubicación del negocio. */
+  var ATIENDE_TXT = {
+    local: function () { return 'Recibe clientes en su local'; },
+    zona: function (b) { var z = b.location.zone && b.location.zone.name; return (b.delivery ? 'A domicilio' : 'Atiende por zona') + (z ? ' en ' + z : '') + '. No tiene local abierto al público ni dirección publicada.'; },
+    en_linea: function (b) { return 'En línea (redes, WhatsApp o web)' + (b.delivery ? ', con domicilios' : '') + '. No tiene local abierto al público.'; }
+  };
   function render(b, h) {
     var famKey = familyOf(b), fam = FAMILIES[famKey], kind = KINDS[b.kind] || KINDS.tienda, preview = !!h.preview;
     var photo = b.cover ? ' has-photo" style="background-image:url(' + b.cover + ')' : '';
     var badge = b.logo ? '<img class="pf-logo" src="' + b.logo + '" alt="Logotipo de ' + esc(b.name) + '" decoding="async">' : '<span class="pf-logo pf-logo--icon">' + icon(b.icon || kind.icon, 30) + '</span>';
     var kindLine = esc(b.kindLabel || kind.label) + ' en ' + esc(h.place) + (b.since ? ', desde ' + b.since : '');
+    var local = !Cerca.store || Cerca.store.attendMode(b) === 'local' || (preview && !b.location);
     var dis = function (why) { return ' aria-disabled="true" data-why="' + esc(why) + '"'; };
     var contactWhy = preview ? 'En la vista previa los botones no hacen nada.' : b.demo ? 'Contacto ficticio: este negocio es de prueba.' : 'Este negocio no publicó este contacto.';
     // Entrega B: enlaces directos solo con un contacto válido publicado; si no, el botón se ve inactivo y lo explica.
@@ -129,8 +136,9 @@
     var link = function (href, act, ic, label, ext) { return '<a class="pf-act" data-pf-act="' + act + '" href="' + esc(href) + '"' + (ext ? ' target="_blank" rel="noopener"' : '') + '>' + icon(ic, 22) + '<span>' + label + '</span></a>'; };
     var actions =
       (tel ? link(tel, 'call', 'call', 'Llamar') : '<button type="button" class="pf-act" data-pf-act="call"' + dis(contactWhy) + '>' + icon('call', 22) + '<span>Llamar</span></button>') +
-      (wa ? link(wa, 'chat', 'chat', 'WhatsApp', true) : '<button type="button" class="pf-act" data-pf-act="chat"' + dis(contactWhy) + '>' + icon('chat', 22) + '<span>WhatsApp</span></button>') +
-      '<button type="button" class="pf-act pf-act--main" data-pf-act="map"' + (preview ? dis('En la vista previa los botones no hacen nada.') : '') + '>' + icon('pin', 22) + '<span>Cómo llegar</span></button>' +
+      (wa ? link(wa, 'chat', 'chat', 'WhatsApp', true).replace('class="pf-act"', 'class="pf-act' + (local ? '' : ' pf-act--main') + '"') : '<button type="button" class="pf-act" data-pf-act="chat"' + dis(contactWhy) + '>' + icon('chat', 22) + '<span>WhatsApp</span></button>') +
+      // Solo los negocios con local tienen «Cómo llegar»: nunca se ofrece navegación hacia quien no recibe clientes.
+      (local ? '<button type="button" class="pf-act pf-act--main" data-pf-act="map"' + (preview ? dis('En la vista previa los botones no hacen nada.') : '') + '>' + icon('pin', 22) + '<span>Cómo llegar</span></button>' : '') +
       '<button type="button" class="pf-act" data-pf-act="share"' + (preview ? dis('En la vista previa los botones no hacen nada.') : '') + '>' + icon('share', 22) + '<span>Compartir</span></button>' +
       (preview ? '<button type="button" class="pf-act"' + dis('En la vista previa los botones no hacen nada.') + '>' + icon('save', 22) + '<span>Guardar</span></button>'
         : '<button type="button" class="pf-act" data-save="' + b.id + '" aria-pressed="' + h.isSaved(b.id) + '">' + icon('save', 22) + '<span class="save-lbl">' + (h.isSaved(b.id) ? 'Guardado' : 'Guardar') + '</span></button>');
@@ -150,9 +158,11 @@
         ((b.tags || []).length ? '<ul class="pf-tags">' + b.tags.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '') + '</section>' : '') +
       gallery +
       '<section class="pf-sec pf-info" aria-labelledby="pf-info-h"><h2 id="pf-info-h">Cuándo y dónde</h2><dl>' +
-        '<dt>Horario</dt><dd>' + esc(h.hoursText(b)) + '</dd><dt>Zona</dt><dd>' + esc(h.place) + ', ' + esc(h.dept) + '</dd>' +
-        '<dt>Dirección</dt>' + (b.location && b.location.address ? '<dd>' + esc(b.location.address) + '</dd>'
-          : '<dd class="placeholder">' + (preview ? '[La añadirás al registrarte]' : b.location && b.location.mode === 'zona' ? 'Atiende en una zona, sin dirección pública' : 'Sin dirección publicada') + '</dd>') +
+        '<dt>Horario</dt><dd>' + esc(h.hoursText(b)) + '</dd>' +
+        (Cerca.store && b.location ? '<dt>Cómo atiende</dt><dd>' + esc(ATIENDE_TXT[Cerca.store.attendMode(b)](b)) + '</dd>' : '') +
+        '<dt>Municipio</dt><dd>' + esc(h.place) + ', ' + esc(h.dept) + '</dd>' +
+        (local ? '<dt>Dirección</dt>' + (b.location && b.location.address ? '<dd>' + esc(b.location.address) + '</dd>'
+          : '<dd class="placeholder">' + (preview ? '[La añadirás al registrarte]' : 'Sin dirección publicada') + '</dd>') : '') +
         // Solo contactos publicados; nunca un teléfono de relleno como si fuera real.
         '<dt>Contacto</dt>' + ((b.contacts || []).length ? '<dd class="pf-contacts">' + b.contacts.map(function (c) {
             var href = Cerca.store ? Cerca.store.contactHref(c.kind, c.value) : null, lbl = CONTACT_LABEL[c.kind] || c.kind, shown = c.kind === 'web' ? c.value.replace(/^https:\/\//, '') : /^(instagram|tiktok)$/.test(c.kind) ? '@' + c.value : c.value;
