@@ -76,13 +76,15 @@
 
   // Cada palabra recuerda el elemento completo («Pan de sal») para explicar el resultado.
   function listForms(list) { return list.reduce(function (acc, item) { return acc.concat(words(item).filter(function (w) { return !STOP.has(w); }).map(function (w) { return form(w, item); })); }, []); }
+  // Cómo atiende también se puede buscar («domicilio», «en línea», «virtual»).
+  function attendWords(b) { return [].concat(b.delivery ? ['domicilio'] : [], b.location && b.location.mode === 'en_linea' ? ['online', 'virtual', 'linea'] : []); }
   var cache = {};
   function index(b) {
     if (!cache[b.id]) {
       cache[b.id] = {
         name: forms(b.name),
         prod: listForms((b.products || []).map(function (p) { return p.n; })),
-        tags: listForms([].concat(b.keywords || [], b.tags || [])),
+        tags: listForms([].concat(b.keywords || [], b.tags || [], attendWords(b))),
         cat: forms([b.category, b.kindLabel || ''].join(' ')),
         text: forms([b.blurb, b.description].join(' '))
       };

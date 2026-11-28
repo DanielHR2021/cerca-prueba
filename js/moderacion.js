@@ -69,7 +69,7 @@
     var d = r.datos || {}, nuevo = !r.negocios || !r.negocios.publicado_en, abierta = st.abierta === r.id;
     var b = abierta ? Cerca.store.normalize(Cerca.store.fromDatos(d, { zonaNombre: d.ubicacion && st.zonas[d.ubicacion.zona_id] }), 'mod') : null;
     return '<li class="reg-item mod-item"><div><strong>' + esc(d.nombre || 'Sin nombre') + '</strong> <span class="reg-badge">' + (nuevo ? 'Negocio nuevo' : 'Cambios a ficha publicada') + '</span>' +
-      '<p class="ed-hint">Enviado ' + esc(fecha(r.enviada_en)) + ' · ' + esc(d.categoria || 'sin categoría') + ' · ' + (d.ubicacion && d.ubicacion.modo === 'zona' ? 'Atiende en zona: ' + esc(st.zonas[d.ubicacion.zona_id] || '') : 'Con local') + '</p></div>' +
+      '<p class="ed-hint">Enviado ' + esc(fecha(r.enviada_en)) + ' · ' + esc(d.categoria || 'sin categoría') + ' · ' + (d.ubicacion && d.ubicacion.modo === 'en_linea' ? 'Solo en línea' : d.ubicacion && d.ubicacion.modo === 'zona' ? 'Atiende en zona: ' + esc(st.zonas[d.ubicacion.zona_id] || '') : 'Con local') + '</p></div>' +
       '<div class="auth-acts"><button type="button" class="btn btn--ghost" data-mod="ver" data-id="' + r.id + '">' + (abierta ? 'Ocultar ficha' : 'Ver ficha propuesta') + '</button></div>' +
       (abierta ? '<div class="reg-preview">' + Cerca.profiles.render(b, Cerca.app.profileHelpers(true)) + '</div>' : '') +
       '<label class="mod-mot" for="mot-' + r.id + '">Motivo (obligatorio para pedir corrección o rechazar)</label><textarea id="mot-' + r.id + '" maxlength="500" placeholder="Ej.: Falta la foto de la fachada; la dirección no coincide"></textarea>' +

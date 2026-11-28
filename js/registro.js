@@ -99,13 +99,13 @@
     var u = d.ubicacion || {};
     if (u.modo === 'local') { if (!isFinite(u.lat) || !isFinite(u.lng)) { e.ubicacion = 'Marca en el mapa dónde atiendes.'; } }
     else if (u.modo === 'zona') { if (!u.zona_id) { e.ubicacion = 'Elige la zona donde atiendes.'; } }
-    else if (u.modo === 'en_linea' && C.modoEnLinea) { /* sin punto ni zona: se atiende por redes, WhatsApp o web */
-      if (!(d.contactos || []).length) { e.ubicacion = 'Si atiendes solo en línea, agrega al menos un contacto (WhatsApp, Instagram, web…) en el paso 4.'; } }
-    else { e.ubicacion = 'Indica si tienes un local o si atiendes en una zona.'; }
+    else if (u.modo === 'en_linea' && C.modoEnLinea) { /* sin punto ni zona: se atiende por redes, WhatsApp o web (se exige abajo un contacto) */ }
+    else { e.ubicacion = 'Indica cómo atiendes: con local, a domicilio o en línea.'; }
     var h = d.horario || {};
     if (h.modo === 'fijo' && !(h.semana || []).length) { e.horario = 'Marca al menos un día con su horario, o elige «con cita» o «variable».'; }
     (h.semana || []).forEach(function (s) { if (!s.abre || !s.cierra || s.abre === s.cierra) { e.horario = 'Revisa las horas: apertura y cierre no pueden ser iguales.'; } });
     (d.contactos || []).forEach(function (c) { var n = S().normalizeContact(c.tipo, c.valor); if (n.error) { e['c_' + c.tipo] = n.error; } });
+    if (u.modo === 'en_linea' && !(d.contactos || []).length) { e.c_enlinea = 'Si atiendes solo en línea, agrega al menos un contacto: WhatsApp, Instagram, web u otro.'; }
     return e;
   }
   function pasoDeError(k) { return /^(nombre|tipo)$/.test(k) ? 0 : k === 'ubicacion' ? 1 : k === 'horario' ? 2 : /^c_/.test(k) ? 3 : 4; }
@@ -330,7 +330,9 @@
     var get = function (t) { var c = (st.datos.contactos || []).filter(function (x) { return x.tipo === t; })[0]; return c ? c.valor : ''; };
     var f = [['whatsapp', 'WhatsApp', 'tel', '300 123 4567'], ['telefono', 'Teléfono', 'tel', '300 123 4567'], ['correo', 'Correo', 'email', 'nombre@correo.com'],
       ['instagram', 'Instagram', 'text', 'usuario (sin @)'], ['facebook', 'Facebook', 'text', 'nombre de la página'], ['tiktok', 'TikTok', 'text', 'usuario'], ['web', 'Sitio web', 'url', 'https://…']];
-    return '<p class="ed-hint">Todos son opcionales. Solo se mostrará un botón si el dato es válido. Los clientes te escribirán directamente: Nubi no guarda mensajes.</p>' +
+    var enLinea = st.datos.ubicacion && st.datos.ubicacion.modo === 'en_linea';
+    return '<p class="ed-hint">' + (enLinea ? 'Como atiendes solo en línea, agrega al menos uno: es la forma en que te contactarán.' : 'Todos son opcionales.') + ' Solo se mostrará un botón si el dato es válido. Los clientes te escribirán directamente: Nubi no guarda mensajes.</p>' +
+      (e.c_enlinea ? '<p class="reg-err" role="alert">' + esc(e.c_enlinea) + '</p>' : '') +
       f.map(function (x) {
         var v = get(x[0]), n = v ? S().normalizeContact(x[0], v) : {}, href = n.value ? S().contactHref(x[0], n.value) : '';
         return campo('rc-' + x[0], x[1], '<input id="rc-' + x[0] + '" data-c="' + x[0] + '" type="' + (x[2] === 'url' ? 'text' : x[2]) + '" inputmode="' + (x[2] === 'tel' ? 'tel' : x[2] === 'email' ? 'email' : x[2] === 'url' ? 'url' : 'text') + '" value="' + esc(v) + '" placeholder="' + esc(x[3]) + '" autocomplete="off"' + SIN_MAYUS + '>',

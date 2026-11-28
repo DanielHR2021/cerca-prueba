@@ -31,8 +31,8 @@ window.CERCA_CONFIG = {
   // Patrocinios (preparado, apagado): solo se activa con campañas reales aprobadas y la migración 0008 aplicada.
   // Con activo = false no se hace ninguna consulta ni se muestra ningún espacio.
   patrocinios: { activo: false },
-  // Forma de atender «en línea» (sin local ni zona): requiere la migración 0008 en la base de datos.
-  modoEnLinea: false,
+  // Forma de atender «en línea» (sin local ni zona): usa la migración 0008 (aplicada en nubi-pruebas el 2026-11-28).
+  modoEnLinea: true,
   // Supabase (Etapa 1, T5): PROYECTO DE PRUEBAS «nubi-pruebas». La clave «publishable» está hecha para el
   // navegador: la protección real son las reglas por fila (RLS) de db/migraciones. La clave de servicio (privada) NUNCA va aquí.
   supabase: {

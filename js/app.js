@@ -221,7 +221,7 @@ Cerca.store.ready().then(function () {
         '<div class="geo-msg-acts"><button type="button" class="geo-act" data-route-clear>Quitar ruta</button>' + mapsLink(b) + '</div></div>';
     }
     // D4/D10: sin punto público de atención (negocio por zona) nunca se ofrece ruta.
-    if (!S.canRoute(b)) { return '<div class="route-ask"><p class="route-note">Atiende en una zona general, sin punto público: no hay ruta hasta este negocio.</p></div>'; }
+    if (!S.canRoute(b)) { return '<div class="route-ask"><p class="route-note">' + (S.attendMode(b) === 'en_linea' ? 'Atiende solo en línea' : 'Atiende en una zona general') + ', sin punto público: no hay ruta hasta este negocio.</p></div>'; }
     var busy = state.routing === b.id;
     return '<div class="route-ask"><button type="button" class="btn btn--ghost route-btn" data-route="' + b.id + '"' + (busy ? ' disabled aria-busy="true"' : '') + '>' +
       (busy ? 'Calculando ruta…' : 'Ruta a pie') + '</button>' + mapsLink(b) +
